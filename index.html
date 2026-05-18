@@ -1,0 +1,3783 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Год — планер и баланс</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #FAF9F5;
+  --card: #F1EFE8;
+  --card-2: #E8E6DE;
+  --text: #1A1915;
+  --muted: #5F5E5A;
+  --muted-2: #888780;
+  --border: #D3D1C7;
+  --border-light: #E0DED5;
+  --accent: #1A1915;
+  --today: #3A9A56;
+  
+  /* Heat colors — мягкие, охристо-рыжая гамма, без алого */
+  --heat-cold: rgba(190, 220, 235, 0.28);
+  --heat-cool: rgba(210, 230, 240, 0.15);
+  --heat-mid: rgba(245, 225, 195, 0.32);
+  --heat-warm: rgba(240, 200, 150, 0.42);
+  --heat-hot: rgba(225, 160, 110, 0.50);
+  --heat-burn: rgba(200, 115, 80, 0.55);
+
+  /* Category palette */
+  --cat-travel-bg: #F5C896;
+  --cat-travel-fg: #5C2E00;
+  --cat-race-bg: #C9B5E8;
+  --cat-race-fg: #2D0A53;
+  --cat-bday-bg: #F0B8C8;
+  --cat-bday-fg: #531A2D;
+  --cat-personal-bg: #A8DCC4;
+  --cat-personal-fg: #04342C;
+  --cat-other-bg: #C9C7BE;
+  --cat-other-fg: #424138;
+
+  /* Sport phases */
+  --sp-prep: #B8D4E8;
+  --sp-base: #87B0D4;
+  --sp-build: #E8C78B;
+  --sp-peak: #E89F6B;
+  --sp-race: #D44A4A;
+  --sp-transition: #9FCFB0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  padding-bottom: 80px;
+}
+
+/* === HEADER === */
+.header {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 100;
+  border-bottom: 0.5px solid var(--border);
+  padding: 12px 16px 8px;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 500;
+}
+.year-btn {
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.year-btn:hover { background: var(--card); color: var(--text); }
+
+.view-tabs {
+  display: flex;
+  background: var(--card);
+  border-radius: 8px;
+  padding: 2px;
+}
+.tab {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  border-radius: 6px;
+  font-weight: 500;
+}
+.tab.active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.settings-btn {
+  background: none;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.settings-btn:hover { background: var(--card); color: var(--text); }
+
+.quick-toggles {
+  display: flex;
+  gap: 6px;
+}
+.toggle-btn {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.toggle-btn:hover { color: var(--text); border-color: var(--muted); }
+.toggle-btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.toggle-btn .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  display: inline-block;
+}
+.toggle-btn.active .dot { background: var(--bg); }
+
+/* === STATUS BAR === */
+.status-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0;
+}
+.status-card {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.status-label {
+  font-size: 10px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.status-value {
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.status-value .heat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+}
+.status-sub {
+  font-size: 10px;
+  color: var(--muted-2);
+}
+
+/* === MAIN === */
+.main { padding: 14px 16px; }
+
+/* === YEAR GRID === */
+.year-grid-wrapper {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 8px;
+  overflow-x: auto;
+}
+.year-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(70px, 1fr));
+  grid-template-rows: auto 1fr;
+  font-size: 10px;
+  min-width: 840px;
+}
+.month-header {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 4px;
+  color: var(--muted);
+  border-bottom: 0.5px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 5;
+}
+.month-header.is-current { color: var(--text); font-weight: 600; }
+.row-header-blank { display: none; }
+.day-numbers { display: none; }
+.day-num {
+  position: absolute;
+  left: 6px;
+  width: 12px;
+  text-align: right;     /* правый край всегда в одной точке */
+  font-size: 9px;
+  color: var(--muted-2);
+  pointer-events: none;
+  z-index: 10;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+.month-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-right: 0.5px solid var(--border-light);
+}
+.day-cell {
+  height: 22px;
+  border-bottom: 0.5px solid var(--border-light);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+.day-cell.weekend::before { display: none; }
+/* Праздники: полоска у самого holiday-bar (одна непрерывная через диапазон) */
+.day-cell.holiday::before { display: none; }
+.day-num.weekend { color: #C0392B; font-weight: 500; }
+.day-num.holiday { color: #B8860B; font-weight: 600; }
+
+.day-cell.empty {
+  background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.018) 3px, rgba(0,0,0,0.018) 4px);
+  cursor: default;
+}
+.day-cell.past::after { display: none; }
+.day-cell.today {
+  box-shadow: inset 0 0 0 2px #2A8848;
+  z-index: 3;
+}
+.day-cell:hover:not(.empty) {
+  box-shadow: inset 0 0 0 1px var(--text);
+}
+
+/* Event bar — единый бар для многодневного события */
+/* === EVENT BARS — стиль "написано от руки рядом с числом" === */
+.event-bar {
+  position: absolute;
+  left: 21px;
+  right: 2px;
+  top: 0;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  z-index: 2;
+  overflow: hidden;
+  padding: 0 2px;
+  font-size: 10.5px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+}
+.event-bar.point {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Многодневные — тонкая цветная левая полоска + перенос текста */
+.event-bar:not(.point):not(.holiday-bar) {
+  left: 1px;
+  border-left: 2px solid transparent;
+  padding-left: 20px;
+  z-index: 1;
+  align-items: flex-start;
+  line-height: 22px;
+  font-size: 10.5px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  overflow: hidden;
+  text-overflow: clip;
+}
+/* Point events — одна строка */
+.event-bar.point {
+  left: 21px;
+  right: 2px;
+  top: 0;
+  height: 22px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  width: auto;
+  font-weight: 500;
+  font-size: 10.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Цветной dot — убран, маркер лишний */
+.event-bar.point::before { display: none; }
+.event-bar.point.has-icon::before { display: none; }
+.event-icon, .cake-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 3px;
+  flex-shrink: 0;
+  color: var(--event-color);
+  filter: brightness(0.55) saturate(1.2);
+  vertical-align: middle;
+}
+.event-bar.point.point-overlay { z-index: 4; }
+.event-bar:hover { opacity: 0.75; }
+.event-bar.recreational { box-shadow: none; }
+
+/* Ручки изменения размера (для многодневных) */
+.resize-handle {
+  position: absolute;
+  left: 0; right: 0;
+  height: 5px;
+  cursor: ns-resize;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.resize-handle-top { top: 0; border-radius: 2px 2px 0 0; }
+.resize-handle-bottom { bottom: 0; border-radius: 0 0 2px 2px; }
+.event-bar:hover .resize-handle { opacity: 1; background: rgba(0,0,0,0.18); }
+.event-bar.dragging { opacity: 0.65 !important; cursor: grabbing !important; }
+
+/* Праздники: одна непрерывная золотая полоска + фон, текст базовым цветом */
+.event-bar.holiday-bar {
+  color: var(--text) !important;
+  background: rgba(218, 165, 32, 0.25) !important;
+  border-left: 2.5px solid rgba(218, 165, 32, 0.95) !important;
+  font-size: 10.5px;
+  font-weight: 500;
+  z-index: 1;
+  left: 1px;
+  padding-left: 20px;
+  align-items: flex-start;
+  line-height: 22px;
+  white-space: normal;
+  word-break: break-word;
+  overflow: hidden;
+}
+.event-bar.holiday-bar.worked {
+  background: rgba(192, 189, 180, 0.15) !important;
+  color: #999590 !important;
+  text-decoration: line-through;
+  border-color: rgba(192, 189, 180, 0.6) !important;
+}
+.event-bar.holiday-chip.worked,
+.event-bar.holiday-bar.worked {
+  background: transparent !important;
+  color: #C0BDB4 !important;
+  text-decoration: line-through;
+  border-color: #C0BDB4 !important;
+}
+
+/* Sport block strip — единая горизонтальная полоса (как в Timeline) */
+.sport-strip {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--border-light);
+  display: block;
+  min-width: 100%;
+  height: 30px;
+}
+.sport-strip-track {
+  position: relative;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 4px;
+}
+.sport-strip-track-inner {
+  position: relative;
+  height: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.sport-strip-months {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  position: absolute;
+  inset: 0;
+}
+.sport-strip-month-bg {
+  border-right: 0.5px solid var(--border-light);
+}
+.sport-strip-month-bg:nth-child(odd) {
+  background: rgba(0,0,0,0.012);
+}
+/* Плановые отпуска — цвет задаётся через JS, здесь только штриховка */
+.event-bar.auto-planned {
+  opacity: 0.55;
+  color: #5F5E5A !important;
+}
+
+.sport-block {
+  position: absolute;
+  height: 22px;
+  top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 3px;
+  cursor: pointer;
+  z-index: 1;
+}
+.sport-add-btn {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  height: 22px;
+  width: 22px;
+  border: 1px dashed var(--muted-2);
+  background: transparent;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+.sport-add-btn:hover { background: rgba(0,0,0,0.05); color: var(--text); border-color: var(--text); }
+
+/* === LEGEND === */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  align-items: center;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; padding: 3px 7px; border-radius: 6px; transition: opacity 0.15s, background 0.15s; }
+.legend-item:hover { background: rgba(0,0,0,0.04); }
+.legend-item.off { opacity: 0.35; text-decoration: line-through; }
+.legend-item.off .legend-swatch { filter: grayscale(1); }
+.legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+.legend-divider { width: 0.5px; background: var(--border); height: 12px; }
+
+.heat-legend {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  margin-left: auto;
+  font-size: 10px;
+  cursor: help;
+}
+.heat-legend-bar {
+  display: flex;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 6px;
+}
+.heat-legend-bar > div { width: 22px; height: 12px; }
+
+/* === TIMELINE VIEW === */
+.timeline {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.timeline-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.timeline-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  text-align: right;
+  padding-right: 8px;
+}
+.timeline-track {
+  position: relative;
+  height: 28px;
+  background: var(--bg);
+  border-radius: 4px;
+  /* overflow убран — текст событий может вылетать наружу */
+}
+.timeline-track-inner {
+  position: relative;
+  height: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.timeline-months {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  position: absolute;
+  inset: 0;
+}
+.timeline-month-bg {
+  border-right: 0.5px solid var(--border-light);
+}
+.timeline-month-bg:nth-child(odd) {
+  background: rgba(0,0,0,0.015);
+}
+.timeline-event {
+  position: absolute;
+  top: 4px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  overflow: hidden;   /* текст не выходит за пределы блока */
+}
+.timeline-event .te-bar {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  border-left: 3px solid transparent; /* цвет задаётся inline через JS */
+}
+.timeline-event .te-label {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  font-size: 10px;
+  padding: 0 6px;
+  white-space: nowrap;
+  font-weight: 500;
+  pointer-events: none;
+}
+.timeline-event.short .te-label { display: none; }
+.timeline-event.recreational .te-bar {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+}
+.timeline-today {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--today);
+  z-index: 5;
+  pointer-events: none;
+}
+.timeline-header {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.timeline-header-spacer { }
+.timeline-header-months {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  font-size: 11px;
+  color: var(--muted);
+}
+.timeline-header-months > div {
+  text-align: center;
+  padding: 4px 0;
+  font-weight: 500;
+}
+
+/* === LIST VIEW === */
+.list-view {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 4px;
+}
+.list-month {
+  padding: 12px 14px 6px;
+  font-size: 11px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border-light);
+  cursor: pointer;
+}
+.list-item:hover { background: var(--bg); }
+.list-item:last-child { border-bottom: none; }
+.list-date {
+  font-size: 12px;
+  color: var(--muted);
+  width: 70px;
+  font-variant-numeric: tabular-nums;
+}
+.list-cat-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.list-title {
+  font-size: 13px;
+  flex: 1;
+}
+.list-duration {
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+/* === MODAL === */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 25, 21, 0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+.overlay.show { display: flex; }
+.modal {
+  background: var(--bg);
+  border-radius: 14px;
+  padding: 20px;
+  max-width: 460px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.field {
+  margin-bottom: 12px;
+}
+.field-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+input[type="text"], input[type="date"], textarea, select {
+  width: 100%;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+}
+input[type="text"]:focus, input[type="date"]:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--text);
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cat-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cat-pick-btn {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.cat-pick-btn.active { box-shadow: inset 0 0 0 2px var(--text); }
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+input[type="checkbox"] { accent-color: var(--text); }
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.btn {
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: inherit;
+}
+.btn-primary { background: var(--text); color: var(--bg); flex: 1; }
+.btn-secondary { background: var(--card); color: var(--text); }
+.btn-danger { background: transparent; color: #B33; margin-right: auto; }
+.btn:hover { filter: brightness(0.95); }
+
+/* === SETTINGS PANEL === */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  z-index: 150;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+  overflow-y: auto;
+  box-shadow: -4px 0 30px rgba(0,0,0,0.1);
+}
+.settings-panel.show { transform: translateX(0); }
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 5;
+}
+.settings-section {
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--border);
+}
+.settings-section-title {
+  font-size: 11px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border-light);
+}
+.cat-row:last-child { border-bottom: none; }
+.cat-color-picker {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.cat-name {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  padding: 4px;
+  color: var(--text);
+}
+.cat-name:focus { outline: none; background: var(--card); border-radius: 4px; }
+.cat-intensity {
+  width: 70px;
+  text-align: center;
+  font-size: 12px;
+  background: var(--card);
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+}
+.cat-del {
+  background: none;
+  border: none;
+  color: var(--muted-2);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+}
+.cat-add {
+  background: var(--card);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.param-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.param-row label { color: var(--muted); }
+.param-row input[type="number"] { width: 80px; }
+.param-help {
+  font-size: 11px;
+  color: var(--muted-2);
+  margin: -4px 0 12px;
+}
+
+/* Sport block management */
+.sport-block-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px 28px;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 0.5px solid var(--border-light);
+  font-size: 12px;
+}
+.sport-block-row select {
+  font-size: 11px;
+  padding: 4px 6px;
+}
+.sport-block-row input[type="date"] {
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+/* FAB */
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  z-index: 50;
+  font-weight: 300;
+}
+
+/* Custom tooltip */
+.tt-tooltip {
+  position: fixed;
+  background: rgba(26, 25, 21, 0.94);
+  color: #FAF9F5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  z-index: 500;
+  pointer-events: none;
+  max-width: 280px;
+  white-space: pre-wrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  line-height: 1.4;
+  display: none;
+}
+
+/* Heat scale popover */
+.heat-popover {
+  position: fixed;
+  background: rgba(26, 25, 21, 0.97);
+  color: #FAF9F5;
+  padding: 14px 16px;
+  border-radius: 10px;
+  z-index: 600;
+  pointer-events: none;
+  max-width: 320px;
+  min-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  display: none;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.hp-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 10px;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.hp-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 0.5px solid rgba(250, 249, 245, 0.1);
+}
+.hp-row:first-of-type { border-top: none; padding-top: 0; }
+.hp-swatch {
+  width: 28px;
+  height: 18px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.hp-text { flex: 1; }
+.hp-name { font-weight: 500; font-size: 12px; }
+.hp-hint {
+  color: rgba(250, 249, 245, 0.65);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.hp-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(250,249,245,0.15);
+  font-size: 11px;
+  color: rgba(250,249,245,0.6);
+  line-height: 1.45;
+}
+
+/* Helper */
+.muted { color: var(--muted); }
+.tiny { font-size: 11px; }
+.hidden { display: none !important; }
+
+@media (max-width: 700px) {
+  .status-bar { grid-template-columns: 1fr 1fr; }
+  .header-row { flex-wrap: wrap; }
+  .year-grid { font-size: 9px; grid-template-columns: repeat(12, minmax(56px, 1fr)); min-width: 680px; }
+  .day-cell, .day-num { height: 20px; }
+  .month-header { font-size: 10px; padding: 4px 2px; }
+  .event-chip { font-size: 8px; padding: 0 3px; }
+}
+/* ==================== METHODOLOGY MODAL ==================== */
+#methodOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 24px 16px; overflow-y: auto;
+}
+#methodOverlay.show { display: flex; }
+#methodModal {
+  background: var(--bg); border-radius: 14px; width: 100%; max-width: 760px;
+  max-height: calc(100vh - 48px); overflow-y: auto;
+  padding: 28px 32px; position: relative;
+}
+.method-close {
+  position: absolute; top: 18px; right: 20px;
+  background: var(--card); border: none; border-radius: 8px;
+  width: 32px; height: 32px; cursor: pointer; font-size: 18px;
+  color: var(--muted); display: flex; align-items: center; justify-content: center;
+}
+.method-close:hover { color: var(--text); }
+.mth h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+.mth .sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.mth h2 { font-size: 16px; font-weight: 500; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 0.5px solid var(--border-light); }
+.mth h3 { font-size: 13px; font-weight: 500; margin: 16px 0 6px; }
+.mth p { font-size: 13px; margin-bottom: 10px; line-height: 1.6; }
+.mth table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+.mth th, .mth td { padding: 6px 10px; border-bottom: 0.5px solid var(--border-light); text-align: left; }
+.mth th { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.mth code { background: var(--card); padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: ui-monospace, monospace; }
+.mth .formula { background: var(--card); padding: 10px 14px; border-radius: 8px; font-size: 12px; font-family: ui-monospace, monospace; margin: 8px 0; }
+.mth .card { background: var(--card); border-radius: 10px; padding: 14px 18px; margin: 8px 0; }
+.mth .disclaimer { background: #FFF8EE; border-left: 3px solid #DAA520; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: var(--muted); margin: 12px 0; }
+.mth .disclaimer strong { color: var(--text); font-weight: 500; }
+.mth .tag { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+.mth .tag-hyp { background: #D9EAF7; color: #1F5C8A; }
+.mth .tag-res { background: #E5F3EC; color: #1F6D4D; }
+.mth .tag-nor { background: #EFEDDD; color: #5C5630; }
+.mth .tag-tir { background: #F8E2C8; color: #84511B; }
+.mth .tag-bur { background: #F2C8C2; color: #8B2E20; }
+.mth ul { padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.mth ul li { margin-bottom: 3px; }
+.mth .zone-bar { display: flex; height: 28px; border-radius: 7px; overflow: hidden; margin: 10px 0 6px; }
+.mth .zone-bar div { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-row">
+    <div class="year-selector">
+      <button class="year-btn" onclick="changeYear(-1)">‹</button>
+      <span id="yearDisplay">2026</span>
+      <button class="year-btn" onclick="changeYear(1)">›</button>
+    </div>
+    <div class="view-tabs">
+      <button class="tab active" data-view="year" onclick="switchView('year')">Год</button>
+      <button class="tab" data-view="timeline" onclick="switchView('timeline')">Таймлайн</button>
+      <button class="tab" data-view="list" onclick="switchView('list')">Список</button>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span id="syncIndicator" style="font-size: 11px; font-weight: 500; padding: 0 6px;"></span>
+      <button class="toggle-btn" id="btnHeatmap" onclick="toggleHeatmap()" title="Тепловая карта нагрузки">Нагрузка</button>
+      <button class="settings-btn" onclick="toggleSettings()">Настройки</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-card">
+      <div class="status-label">Дней без отдыха</div>
+      <div class="status-value">
+        <span class="heat-dot" id="heatDot"></span>
+        <span id="streakDays">—</span>
+      </div>
+      <div class="status-sub" id="streakHint">—</div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">Дней в поездках</div>
+      <div class="status-value" id="travelDays">0</div>
+      <div class="status-sub" id="travelPct">— % года</div>
+    </div>
+    <div class="status-card" id="loadCard" style="cursor: help;">
+      <div class="status-label">Текущая нагрузка</div>
+      <div class="status-value" id="currentLoad">—</div>
+      <div class="status-sub" id="loadZone">—</div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">Следующий отдых</div>
+      <div class="status-value" id="nextEvent" style="font-size: 12px; font-weight: 500;">—</div>
+      <div class="status-sub" id="nextEventDate">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  
+  <!-- YEAR GRID VIEW -->
+  <div id="view-year">
+    <div class="year-grid-wrapper">
+      <div class="year-grid" id="yearGrid"></div>
+      <div class="sport-strip" id="sportStrip"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <!-- TIMELINE VIEW -->
+  <div id="view-timeline" class="hidden">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:0 2px;">
+      <button class="year-btn" id="tlPrev" onclick="tlNav(-1)" style="font-size:14px;">‹</button>
+      <span id="tlRangeLabel" style="font-size:12px;color:var(--muted);min-width:120px;text-align:center;font-weight:500;"></span>
+      <button class="year-btn" id="tlNext" onclick="tlNav(1)" style="font-size:14px;">›</button>
+      <div style="margin-left:auto;display:flex;gap:4px;">
+        <button class="toggle-btn" id="tlBtnQuarter" onclick="tlSetScale('quarter')" style="padding:5px 10px;font-size:11px;">Квартал</button>
+        <button class="toggle-btn active" id="tlBtnYear" onclick="tlSetScale('year')" style="padding:5px 10px;font-size:11px;">Год</button>
+      </div>
+    </div>
+    <div class="timeline" id="timelineContainer"></div>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div id="view-list" class="hidden">
+    <div class="list-view" id="listContainer"></div>
+  </div>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openEventModal()" title="Новое событие">+</button>
+
+<!-- EVENT MODAL -->
+<div id="methodOverlay">
+  <div id="methodModal" class="mth">
+    <button class="method-close" onclick="closeMethodologyModal()">×</button>
+    <h1>Как считается нагрузка</h1>
+    <div class="sub">Occupational psychology — не спорт, не клиника. Рамка для самонаблюдения.</div>
+    <div class="disclaimer">
+      <strong>Это рамка, не диагностика.</strong> Числа — калибровка на основе литературы. При реальных симптомах выгорания — специалист, не планер.
+    </div>
+    <h2>В трёх предложениях</h2>
+    <p><b>1.</b> Каждый рабочий день добавляет +1 балл усталости.</p>
+    <p><b>2.</b> Рекреационные события снимают усталость — чем глубже выгорание, тем медленнее.</p>
+    <p><b>3.</b> Когда нагрузка достигает Усталости — на календаре появляется рекомендованный отпуск.</p>
+    <h2>1. Три зоны (все научно обоснованы)</h2>
+    <div class="zone-bar" style="margin:10px 0;">
+      <div style="flex:2;background:#E5F3EC;color:#1F6D4D;">Ресурс</div>
+      <div style="flex:1.5;background:#F8E2C8;color:#84511B;">Усталость</div>
+      <div style="flex:1;background:#F2C8C2;color:#8B2E20;">Выгорание</div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Зона</th><th>Диапазон (дефолт)</th><th>Источник</th></tr></thead>
+        <tbody>
+          <tr><td><b>Ресурс</b></td><td>0 – <span id="mth-fatigue">40</span></td><td>Healthy functioning, low MBI (Maslach 1981)</td></tr>
+          <tr><td><b>Усталость</b></td><td><span id="mth-fatigue2">40</span> – <span id="mth-burnout">66</span></td><td>Occupational fatigue continuum (Schaufeli &amp; Enzmann 1998)</td></tr>
+          <tr><td><b>Выгорание</b></td><td><span id="mth-burnout2">66</span>+</td><td>Burnout (Maslach 1981, WHO 2019)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:#5F5E5A;">Три стадии из General Adaptation Syndrome (Selye 1936): Resistance → Exhaustion. Номенклатура от Loehr &amp; Schwartz (2003): Recovery Zone / Burnout Zone.</p>
+    <h2>2. Базовые единицы</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Тип дня</th><th>Вклад</th></tr></thead>
+        <tbody>
+          <tr><td>Будний день (Пн–Пт)</td><td><b>+1.0</b></td></tr>
+          <tr><td>Выходной (Сб, Вс)</td><td>0 (подразумевается)</td></tr>
+          <tr><td>Праздник нерабочий РФ</td><td>0</td></tr>
+          <tr><td>День внутри рекреационного события</td><td>→ кривая ниже</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:#5F5E5A;"><b>Почему выходные = 0:</b> они подразумеваются нормальным ритмом, но критически важны: циркадный reset (Ehlers 1988), sleep debt (Banks &amp; Dinges 2007), psychological detachment (Sonnentag 2015), memory consolidation (Walker &amp; Stickgold 2004), stress buffering (Bakker &amp; Demerouti 2007). Без них люди ломаются за 6-12 мес (Shanafelt et al. 2002).</p>
+    <h2>3. Кривая отдыха — два множителя</h2>
+    <div class="formula">relief = load × fraction(streak) × B² / (B² + load²)</div>
+    <h3>График 1 — Потенциал дня по позиции в streak</h3>
+    <svg viewBox="0 0 500 140" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff;border-radius:6px;margin:8px 0 4px;">
+      <line x1="40" y1="10" x2="40" y2="110" stroke="#5F5E5A" stroke-width="0.8"/>
+      <line x1="40" y1="110" x2="490" y2="110" stroke="#5F5E5A" stroke-width="0.8"/>
+      <line x1="40" y1="40" x2="490" y2="40" stroke="#E8E5DC" stroke-width="0.5"/>
+      <line x1="40" y1="70" x2="490" y2="70" stroke="#E8E5DC" stroke-width="0.5"/>
+      <g font-size="9" fill="#888780" text-anchor="end">
+        <text x="36" y="43">25%</text><text x="36" y="73">15%</text><text x="36" y="113">0%</text>
+      </g>
+      <path d="M 55 88 C 80 78,130 60,175 46 C 200 40,225 43,260 54 C 295 65,340 82,390 95 C 430 104,455 107,490 109"
+        stroke="#1F6D4D" stroke-width="1.8" fill="none"/>
+      <path d="M 55 88 C 80 78,130 60,175 46 C 200 40,225 43,260 54 C 295 65,340 82,390 95 C 430 104,455 107,490 109 L 490 110 L 55 110 Z"
+        fill="#1F6D4D" fill-opacity="0.08"/>
+      <circle cx="175" cy="46" r="3" fill="#1F6D4D"/>
+      <line x1="175" y1="46" x2="175" y2="110" stroke="#1F6D4D" stroke-width="0.5" stroke-dasharray="2,2"/>
+      <text x="180" y="30" font-size="9" fill="#1F6D4D" font-weight="500">Пик д.7, 23% (De Bloom 2010)</text>
+      <g font-size="9" fill="#888780" text-anchor="middle">
+        <text x="55" y="122">1</text><text x="175" y="122">7</text><text x="315" y="122">14</text><text x="455" y="122">21</text>
+      </g>
+      <text x="270" y="135" font-size="9" fill="#5F5E5A" text-anchor="middle">День streak (внутри отпуска)</text>
+    </svg>
+    <p style="font-size:11px;color:#5F5E5A;margin-bottom:8px;">Форма кривой: De Bloom (2010, n=96, diary); Strauss-Blasche (2000-2005, plateau d5-14); Sonnentag &amp; Bennett (2007, detachment d3-7). Растягивается бегунком days_to_full_recovery.</p>
+    <h3>График 2 — Насыщение Hill: эффективность по уровню нагрузки</h3>
+    <svg viewBox="0 0 500 140" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff;border-radius:6px;margin:8px 0 4px;">
+      <line x1="40" y1="10" x2="40" y2="110" stroke="#5F5E5A" stroke-width="0.8"/>
+      <line x1="40" y1="110" x2="490" y2="110" stroke="#5F5E5A" stroke-width="0.8"/>
+      <line x1="40" y1="40" x2="490" y2="40" stroke="#E8E5DC" stroke-width="0.5"/>
+      <line x1="40" y1="75" x2="490" y2="75" stroke="#E8E5DC" stroke-width="0.5"/>
+      <g font-size="9" fill="#888780" text-anchor="end">
+        <text x="36" y="43">100%</text><text x="36" y="78">50%</text><text x="36" y="113">0%</text>
+      </g>
+      <path d="M 50 40 C 100 40,170 44,210 55 C 240 63,275 75,320 86 C 365 95,420 100,490 104"
+        stroke="#84511B" stroke-width="1.8" fill="none"/>
+      <path d="M 50 40 C 100 40,170 44,210 55 C 240 63,275 75,320 86 C 365 95,420 100,490 104 L 490 110 L 50 110 Z"
+        fill="#84511B" fill-opacity="0.07"/>
+      <line x1="220" y1="10" x2="220" y2="110" stroke="#C53030" stroke-width="0.5" stroke-dasharray="3,2"/>
+      <circle cx="220" cy="75" r="3" fill="#C53030"/>
+      <text x="225" y="24" font-size="9" fill="#C53030" font-weight="500">Burnout порог B</text>
+      <text x="225" y="34" font-size="9" fill="#5F5E5A">эффект = 50%</text>
+      <g font-size="9" fill="#888780" text-anchor="middle">
+        <text x="50" y="122">0</text><text x="135" y="122">0.5B</text><text x="220" y="122">B</text><text x="355" y="122">1.5B</text>
+      </g>
+      <text x="270" y="135" font-size="9" fill="#5F5E5A" text-anchor="middle">Текущая нагрузка</text>
+    </svg>
+    <div class="formula" style="font-size:11px;">насыщение = B² / (B² + load²)   — Hill equation (1910). Согласуется с Maslach (2016): mild burnout 4-8 нед, moderate 3-6 мес.</div>
+    <h2>4. Два бегунка</h2>
+    <div class="card">
+      <p><code>weeks_productive</code> (4-16, сейчас <span id="mth-wp">8</span>) — недель продуктивной работы до Усталости.<br>
+      fatigue = <span id="mth-wp2">8</span>×5 = <span id="mth-f3">40</span> &nbsp;•&nbsp; burnout = <span id="mth-f4">40</span>×1.66 = <span id="mth-bt2">66</span> (Maslach: +50-70% до full burnout)<br>
+      <small style="color:#5F5E5A;">Дефолт 8: EU Working Time Directive; Shanafelt 2002 n=145; Maslach 2016; WHO max 8 нед.</small></p>
+      <p style="margin-bottom:0"><code>days_to_full_recovery</code> (10-28, дефолт 14) — дней отпуска для полного восстановления. Масштабирует кривую.<br>
+      <small style="color:#5F5E5A;">Дефолт 14: De Bloom 2010 n=96; Strauss-Blasche 2000-2005; Cui 2023 n=200.</small></p>
+    </div>
+    <h2>5. Алгоритм</h2>
+    <div class="formula" style="line-height:1.8;">
+load = 0<br>
+for каждый день года:<br>
+&nbsp;&nbsp;если будний → load += 1.0<br>
+&nbsp;&nbsp;если выходной без события → без изменений<br>
+&nbsp;&nbsp;если день в рекреационном событии:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;frac = fraction(streak_position)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;hill = B² / (B² + load²)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;load -= load × frac × hill<br>
+&nbsp;&nbsp;load = max(0, load)
+    </div>
+    <h2>6. Прогноз отпусков</h2>
+    <p>При достижении fatigue_threshold — автоматически ставится «Пора в отпуск» длиной days_to_full_recovery. Пунктирная заливка = автогенерировано. Можно двигать, переименовать, удалить.</p>
+    <h2>7. Источники</h2>
+    <ul style="font-size:12px;color:#5F5E5A;line-height:1.7;">
+      <li><b>Selye H. (1936, 1950)</b> — General Adaptation Syndrome (основа зон)</li>
+      <li><b>Meijman &amp; Mulder (1998)</b> — Effort-Recovery Theory</li>
+      <li><b>Maslach C., Jackson S. (1981, 2016)</b> — MBI, burnout timeline</li>
+      <li><b>Schaufeli &amp; Enzmann (1998)</b> — occupational fatigue continuum</li>
+      <li><b>WHO (2019)</b> — burnout ICD-11 occupational phenomenon</li>
+      <li><b>De Bloom J. et al. (2010, 2013)</b> — n=96, vacation diary</li>
+      <li><b>Strauss-Blasche G. et al. (2000-2005)</b> — plateau mood/sleep</li>
+      <li><b>Sonnentag &amp; Bennett (2007)</b> — recovery experiences</li>
+      <li><b>Cui R. (2023)</b> — n=200, Tourism Review</li>
+      <li><b>Salvagioni et al. (2017)</b> — systematic review, PLOS ONE</li>
+      <li><b>Shanafelt T. et al. (2002, 2012)</b> — resident burnout</li>
+      <li><b>Bakker &amp; Demerouti (2007)</b> — JD-R Model</li>
+      <li><b>Loehr J. &amp; Schwartz T. (2003)</b> — zone nomenclature</li>
+      <li><b>Hill A.V. (1910)</b> — Hill equation</li>
+      <li><b>Hobfoll S.E. (1989)</b> — Conservation of Resources</li>
+    </ul>
+    <div class="disclaimer" style="margin-top:16px;">
+      <strong>Честный disclaimer.</strong> Форма кривой и пороги — калибровочные константы, не прямые измерения. Паттерн поддержан литературой; числа — разумный выбор для self-tracking.
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="overlay" id="eventOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Новое событие</div>
+    <div class="field">
+      <label class="field-label">Название</label>
+      <input type="text" id="evTitle" placeholder="ДР Коли, Стамбул, Iron Man...">
+    </div>
+    <div class="field">
+      <label class="field-label">Категория</label>
+      <div class="cat-pick" id="catPick"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Дата начала</label>
+        <input type="date" id="evDateStart">
+      </div>
+      <div class="field">
+        <label class="field-label">Дата конца (опц.)</label>
+        <input type="date" id="evDateEnd">
+      </div>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="evRecurring">
+      <label for="evRecurring" class="tiny muted">Повторяется ежегодно (ДР, годовщины)</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="evRecreational">
+      <label for="evRecreational" class="tiny muted" id="evRecreationalLabel">Рекреационное (разгружает)</label>
+    </div>
+    <div class="field">
+      <label class="field-label">Заметка</label>
+      <textarea id="evNote" rows="2" placeholder="Опционально"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-danger hidden" id="evDelete" onclick="deleteEvent()">Удалить</button>
+      <button class="btn btn-secondary" onclick="closeEventModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveEvent()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPORT BLOCK MODAL -->
+<div class="overlay" id="sportOverlay">
+  <div class="modal">
+    <div class="modal-title">Редактировать спорт-период</div>
+    <div class="field">
+      <label class="field-label">Название</label>
+      <input type="text" id="sbTitle" placeholder="ЛЕТО — Кардио → ГОНКА">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Дата начала</label>
+        <input type="date" id="sbDateStart">
+      </div>
+      <div class="field">
+        <label class="field-label">Дата конца</label>
+        <input type="date" id="sbDateEnd">
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Цвет</label>
+      <input type="color" id="sbColor" style="width: 60px; height: 32px; cursor: pointer;">
+    </div>
+    <div class="field">
+      <label class="field-label">Заметка (программа, фокус, питание)</label>
+      <textarea id="sbNote" rows="4" placeholder="Что делаем в этот период"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="sbDelete" onclick="deleteSportBlock()">Удалить</button>
+      <button class="btn btn-secondary" onclick="closeSportBlockModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveSportBlock()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header">
+    <div style="font-size: 16px; font-weight: 500;">Настройки</div>
+    <button class="settings-btn" onclick="toggleSettings()">Закрыть</button>
+  </div>
+  
+  <div class="settings-section">
+    <div class="settings-section-title">Синхронизация и бэкапы</div>
+    <div id="syncBlock" style="margin-top: 10px;"></div>
+  </div>
+  
+  <div class="settings-section">
+    <div class="settings-section-title">Категории событий</div>
+    <div id="catList"></div>
+    <button class="cat-add" onclick="addCategory()">+ Категория</button>
+    <div class="param-help" style="margin-top: 10px;">
+      Галочка «рекреационное» — событие разгружает (запускает кривую отдыха). Без галочки — просто метка в календаре.
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Калибровка нагрузки</div>
+    
+    <div style="margin-top: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <label for="paramWeeksProductive" class="tiny">Недель продуктивной работы без отпуска</label>
+        <span class="tiny" id="paramWeeksProductiveVal" style="font-variant-numeric: tabular-nums; font-weight: 500;">8</span>
+      </div>
+      <input type="range" id="paramWeeksProductive" min="4" max="16" step="1" style="width: 100%; margin-top: 4px;">
+      <div class="param-help" style="margin-top: 4px;">Сколько недель ты работаешь продуктивно до момента когда нужен отпуск. Дефолт 8 — подтверждён WHO, Maslach, Shanafelt.</div>
+    </div>
+    
+    <div style="margin-top: 18px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <label for="paramDaysRecovery" class="tiny">Дней отпуска для полного восстановления</label>
+        <span class="tiny" id="paramDaysRecoveryVal" style="font-variant-numeric: tabular-nums; font-weight: 500;">14</span>
+      </div>
+      <input type="range" id="paramDaysRecovery" min="10" max="28" step="1" style="width: 100%; margin-top: 4px;">
+      <div class="param-help" style="margin-top: 4px;">Растягивает или сжимает кривую отдыха. Дефолт 14 — plateau well-being по De Bloom 2010.</div>
+    </div>
+    
+    <div class="param-help" style="margin-top: 16px;">
+      <button onclick="openMethodologyModal()" style="background: transparent; border: 0.5px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; margin-top: 8px;">Шпаргалка методологии →</button>
+    </div>
+    <div style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" id="toggleHill" style="cursor:pointer;" onchange="toggleHill(this.checked)">
+      <label for="toggleHill" style="font-size: 12px; color: var(--muted); cursor: pointer;">Насыщение Hill — глубокое выгорание восстанавливается медленнее</label>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <button class="btn btn-secondary" onclick="exportData()" style="margin-right: 8px;">Экспорт JSON</button>
+    <button class="btn btn-secondary" onclick="importData()">Импорт JSON</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="handleImport(event)">
+    <div style="margin-top: 16px;">
+      <button class="btn btn-danger" onclick="resetAll()">Сбросить всё</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+const STORAGE_KEY = 'freedom-planner-v10';
+
+// === ТЕПЛОВАЯ ШКАЛА === (объявлено наверху чтобы IIFE setupHeatPopover видел их)
+// Норма (-1..+6) — прозрачная. От неё в обе стороны: синяя (overrecovery) или жёлто-красная (нагрузка)
+// ==================== ПОРОГИ И ЗОНЫ ====================
+// 3 зоны научно обоснованы:
+//   Ресурс    = healthy functioning below fatigue (Maslach MBI low, Schaufeli 1998)
+//   Усталость = occupational fatigue continuum (Åkerstedt 2004, Schaufeli & Enzmann 1998)
+//   Выгорание = burnout (Maslach 1981, WHO 2019 occupational phenomenon)
+//
+// Пороги:
+//   fatigue_threshold  = weeks_productive × 5   (5 будних × бегунок)
+//   burnout_threshold  = fatigue_threshold × 1.66  (Maslach: +50-70% от first symptoms до full burnout)
+
+function getFatigueThreshold() {
+  return (state.settings.weeks_productive || 8) * 5;
+}
+function getBurnoutThreshold() {
+  return Math.round(getFatigueThreshold() * 1.66);
+}
+// Обратная совместимость для мест где используется heatBurnoutThreshold
+function heatBurnoutThreshold() {
+  return getBurnoutThreshold();
+}
+
+function getHeatGroups() {
+  const F = getFatigueThreshold();
+  const BT = getBurnoutThreshold();
+  return [
+    { max: F,    label: 'Ресурс',    hint: 'здоровое состояние, готовность к нагрузке', swatch: [180, 215, 235, 0.55] },
+    { max: BT,   label: 'Усталость', hint: 'тонус ушёл — пора планировать отдых',       swatch: [250, 230, 140, 0.65] },
+    { max: 9999, label: 'Выгорание', hint: 'нужен длительный отдых',                    swatch: [225, 130, 120, 0.75] }
+  ];
+}
+
+function getHeatColorBands() {
+  const F  = getFatigueThreshold();
+  const BT = getBurnoutThreshold();
+  return [
+    { max: F,    rgba: [200, 225, 240, 0.28] },  // Ресурс — бледно-голубой
+    { max: BT,   rgba: [210, 200, 155, 0.30] },  // Усталость — блёкло-землистый
+    { max: 9999, rgba: [225, 175, 170, 0.32] }   // Выгорание — бледно-розовый
+  ];
+}
+
+function activeHeatGroups() {
+  return getHeatGroups();
+}
+
+const ICONS = {
+  plane: `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11.5 2 L7 6.5 L8.5 11 L7 10.5 L6 7.5 L3.5 10 L3.8 11.2 L2.8 11 L2.5 8 L0.5 7 L0.5 6 L2 6.5 L5.5 3 L3 1.5 L3.5 0.5 Z" fill="currentColor" opacity="0.9"/></svg>`,
+  run:   `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="8.5" cy="1.8" r="1.3" fill="currentColor"/><path d="M8 3.5 L6 7 L8.5 9.5 L10.5 12" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 7 L3.5 10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/><path d="M9.5 5.5 L7 5 L4 7" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+  cake:  `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><line x1="4" y1="4" x2="4" y2="1.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><line x1="9" y1="4" x2="9" y2="1.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="4" cy="1" r="0.7" fill="currentColor"/><circle cx="9" cy="1" r="0.7" fill="currentColor"/><rect x="1" y="4" width="11" height="7.5" rx="1.2" stroke="currentColor" stroke-width="1" fill="none"/><path d="M1 7 C2.5 6, 4.5 8, 6.5 7 C8.5 6, 10.5 8, 12 7" stroke="currentColor" stroke-width="0.9" fill="none"/></svg>`,
+  heart: `<svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><path d="M6.5 11 C6.5 11 1 7.5 1 4.5 C1 2.5 2.5 1.5 4 1.5 C5 1.5 6 2 6.5 2.8 C7 2 8 1.5 9 1.5 C10.5 1.5 12 2.5 12 4.5 C12 7.5 6.5 11 6.5 11Z" opacity="0.9"/></svg>`,
+  coffee:`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6 L3 11 L9 11 L10 6 Z" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/><path d="M10 7 Q12.5 7 12.5 8.5 Q12.5 10 10 10" stroke="currentColor" stroke-width="0.9" fill="none" stroke-linecap="round"/><path d="M4.5 3.5 Q5 2.5 4.5 1.5" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" fill="none"/><path d="M7 4 Q7.5 3 7 2" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" fill="none"/></svg>`,
+  star:  `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5 L7.9 5 L11.5 5 L8.5 7.2 L9.7 11 L6.5 9 L3.3 11 L4.5 7.2 L1.5 5 L5.1 5 Z" stroke="currentColor" stroke-width="0.9" stroke-linejoin="round"/></svg>`,
+  flag:  `<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><line x1="2.5" y1="1" x2="2.5" y2="12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2.5 1.5 L10 1.5 L8 4.5 L10 7.5 L2.5 7.5 Z" fill="currentColor" opacity="0.85"/></svg>`
+};
+
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-travel',   name: 'Поездки',       color: '#A8C0A8', textColor: '#1A1915', recreational: true,  icon: 'plane'  },
+  { id: 'cat-rest',     name: 'Окна отдыха',   color: '#B8C8C0', textColor: '#1A1915', recreational: true,  icon: 'coffee' },
+  { id: 'cat-race',     name: 'Соревнования',  color: '#B8B0C8', textColor: '#1A1915', recreational: false, icon: 'run'    },
+  { id: 'cat-bday',     name: 'Дни рождения',  color: '#C8B0B8', textColor: '#1A1915', recreational: false, icon: 'cake'   },
+  { id: 'cat-personal', name: 'Личные даты',   color: '#C8B898', textColor: '#1A1915', recreational: false, icon: 'heart'  },
+  { id: 'cat-holiday',  name: 'Праздники РФ',  color: '#DAA520', textColor: '#1A1915', recreational: true,  icon: 'flag'   },
+  { id: 'cat-other',    name: 'Прочее',        color: '#BFB8AE', textColor: '#1A1915', recreational: false, icon: 'star'   }
+];
+
+const DEFAULT_SETTINGS = {
+  weeks_productive: 8,
+  days_to_full_recovery: 14,
+  useHillSaturation: false,
+  showHeatmap: true,
+  showSport: true,
+  hiddenCategories: [],
+  currentYear: new Date().getFullYear()
+};
+
+// Российские праздники по ТК РФ ст.112 — только нерабочие праздничные дни
+// Переносы Правительства не учитываем (меняются каждый год отдельным постановлением)
+function defaultHolidays(year) {
+  return [
+    { id: `h-ny-${year}`,    dateStart: `${year}-01-01`, dateEnd: `${year}-01-08`, name: 'Новогодние каникулы',        recreational: true },
+    { id: `h-23feb-${year}`, dateStart: `${year}-02-23`, dateEnd: `${year}-02-23`, name: 'День защитника Отечества',   recreational: true },
+    { id: `h-8mar-${year}`,  dateStart: `${year}-03-08`, dateEnd: `${year}-03-08`, name: '8 Марта',                     recreational: true },
+    { id: `h-1may-${year}`,  dateStart: `${year}-05-01`, dateEnd: `${year}-05-01`, name: 'Праздник Весны и Труда',      recreational: true },
+    { id: `h-9may-${year}`,  dateStart: `${year}-05-09`, dateEnd: `${year}-05-09`, name: 'День Победы',                 recreational: true },
+    { id: `h-12jun-${year}`, dateStart: `${year}-06-12`, dateEnd: `${year}-06-12`, name: 'День России',                 recreational: true },
+    { id: `h-4nov-${year}`,  dateStart: `${year}-11-04`, dateEnd: `${year}-11-04`, name: 'День народного единства',     recreational: true },
+  ];
+}
+
+// Кирилл-периодизация: сезонная, переходящая через границы лет
+// Intensity = 0 для всех блоков — спорт пока не влияет на тепловую карту
+function defaultSportBlocks(year) {
+  const py = year - 1;
+  const ny = year + 1;
+  return [
+    { id: `sb-zim-${py}`, name: 'ЗИМА — Сила + Гипертрофия', phase: 'base', color: '#B07878',
+      dateStart: `${py}-11-01`, dateEnd: `${year}-02-28`, intensity: 0,
+      note: 'Тяжёлый зал: присед, жим, тяги. 3× силовые. Кардио 2× зона 2 фоном. Подтягивания. Йога 1–2×. Профицит +200–300 ккал.' },
+    { id: `sb-vesna-${year}`, name: 'ВЕСНА — Мощность → Атлетизм + Сушка', phase: 'build', color: '#C8B370',
+      dateStart: `${year}-03-01`, dateEnd: `${year}-04-01`, intensity: 0,
+      note: 'Взрывные движения, спринты, прыжки. Скалодром, гимнастика, реальные паттерны. Дефицит + тирзепатид.' },
+    { id: `sb-leto-${year}`, name: 'ЛЕТО — Кардио + VO₂max → ГОНКА', phase: 'peak', color: '#80B080',
+      dateStart: `${year}-04-01`, dateEnd: `${year}-08-09`, intensity: 0,
+      note: 'Высокое кардио: бег, вело, плавание. Интервалы. Силовые поддержание 1–2×. Баланс / лёгкий профицит.' },
+    { id: `sb-osen-${year}`, name: 'ОСЕНЬ — Функциональность + Атлетизм', phase: 'transition', color: '#C89070',
+      dateStart: `${year}-08-10`, dateEnd: `${year}-10-31`, intensity: 0,
+      note: 'Скалодром, прыжки, бег на улице. Гимнастика, баланс. Силовые возвращаются. VO₂max на пике — используем. Баланс → начало профицита.' },
+    { id: `sb-zim-${year}`, name: 'ЗИМА — Сила + Гипертрофия (новый цикл)', phase: 'base', color: '#B07878',
+      dateStart: `${year}-11-01`, dateEnd: `${ny}-03-31`, intensity: 0,
+      note: 'Тяжёлый зал, большой объём, прогрессия. Строим базу. Профицит +200–300 ккал.' },
+  ];
+}
+
+const PHASE_COLORS = {
+  prep: '#B8D4E8', base: '#87B0D4', build: '#E8C78B',
+  peak: '#E89F6B', race: '#D44A4A', transition: '#9FCFB0'
+};
+
+let state = {
+  events: [],
+  categories: [...DEFAULT_CATEGORIES],
+  sportBlocks: [],
+  settings: { ...DEFAULT_SETTINGS }
+};
+
+let currentView = 'year';
+let editingEventId = null;
+let selectedCatId = 'cat-travel';
+
+// ==================== TOOLTIP (instant, custom) ====================
+(function setupTooltip() {
+  const tt = document.createElement('div');
+  tt.className = 'tt-tooltip';
+  document.body.appendChild(tt);
+  
+  function showTip(el) {
+    const text = el.getAttribute('data-tooltip');
+    if (!text) return;
+    tt.textContent = text;
+    tt.style.display = 'block';
+    const rect = el.getBoundingClientRect();
+    // Позиция: сверху над элементом, если есть место; иначе снизу
+    const ttRect = tt.getBoundingClientRect();
+    let top = rect.top - ttRect.height - 6;
+    let left = rect.left + rect.width / 2 - ttRect.width / 2;
+    if (top < 8) top = rect.bottom + 6;
+    if (left < 8) left = 8;
+    if (left + ttRect.width > window.innerWidth - 8) left = window.innerWidth - ttRect.width - 8;
+    tt.style.top = top + 'px';
+    tt.style.left = left + 'px';
+  }
+  
+  document.body.addEventListener('mouseover', (e) => {
+    const target = e.target.closest('[data-tooltip]');
+    if (target) showTip(target);
+  });
+  document.body.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-tooltip]')) tt.style.display = 'none';
+  });
+  document.body.addEventListener('scroll', () => { tt.style.display = 'none'; }, true);
+})();
+
+// ==================== HEAT POPOVER (полная легенда шкалы) ====================
+(function setupHeatPopover() {
+  const pop = document.createElement('div');
+  pop.className = 'heat-popover';
+  document.body.appendChild(pop);
+  
+  function renderPopover() {
+    let html = '<div class="hp-title">Шкала нагрузки</div>';
+    activeHeatGroups().forEach(g => {
+      const [r, gg, bb, a] = g.swatch;
+      const isLight = a < 0.4;
+      const border = isLight ? 'border: 0.5px solid rgba(250,249,245,0.3);' : '';
+      html += `<div class="hp-row">
+        <div class="hp-swatch" style="background: rgba(${r}, ${gg}, ${bb}, ${a}); ${border}"></div>
+        <div class="hp-text">
+          <div class="hp-name">${g.label}</div>
+          <div class="hp-hint">${g.hint}</div>
+        </div>
+      </div>`;
+    });
+    const footer = 'Накопленная нагрузка. Положительная — устал, отрицательная — переотдыхал (Гипотонус). Длинный отпуск тащит в минус.';
+    html += `<div class="hp-footer">${footer}</div>`;
+    pop.innerHTML = html;
+  }
+  
+  function show(target) {
+    renderPopover();
+    pop.style.display = 'block';
+    const rect = target.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    let top = rect.bottom + 8;
+    let left = rect.left;
+    if (top + popRect.height > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - popRect.height - 8);
+    }
+    if (left + popRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - popRect.width - 8;
+    }
+    if (left < 8) left = 8;
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+  }
+  
+  document.body.addEventListener('mouseover', (e) => {
+    const target = e.target.closest('[data-popover="heat"]');
+    if (target) show(target);
+  });
+  document.body.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-popover="heat"]')) pop.style.display = 'none';
+  });
+})();
+
+// ==================== STORAGE ====================
+function load() {
+  try {
+    let raw = localStorage.getItem(STORAGE_KEY);
+    let migratedFrom = null;
+    
+    // Если нет данных в текущей версии — пробуем найти в старых версиях
+    if (!raw) {
+      const oldKeys = [
+        'freedom-planner-v9', 'freedom-planner-v8', 'freedom-planner-v7',
+        'freedom-planner-v6', 'freedom-planner-v5', 'freedom-planner-v4', 'freedom-planner-v3',
+        'year-planner-v6', 'year-planner-v5', 'year-planner-v4', 'year-planner-v3'
+      ];
+      for (const key of oldKeys) {
+        if (key === STORAGE_KEY) continue;
+        const old = localStorage.getItem(key);
+        if (old) {
+          raw = old;
+          migratedFrom = key;
+          break;
+        }
+      }
+    }
+    
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = {
+        events: parsed.events || [],
+        categories: parsed.categories || [...DEFAULT_CATEGORIES],
+        sportBlocks: migratedFrom ? defaultSportBlocks(state.settings.currentYear) : (parsed.sportBlocks || defaultSportBlocks(state.settings.currentYear)),
+        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) }
+      };
+
+      // Если загрузили текущую версию, но там только demo/auto события —
+      // значит реальные данные не были перенесены, ищем в предыдущих версиях
+      const hasOnlyDemoData = state.events.length === 0 ||
+        state.events.every(e => (e.id || '').startsWith('demo-') || (e.id || '').startsWith('auto-vacation-'));
+      if (!migratedFrom && hasOnlyDemoData) {
+        const rescueKeys = ['freedom-planner-v9', 'freedom-planner-v8', 'freedom-planner-v7'];
+        for (const rk of rescueKeys) {
+          const old = localStorage.getItem(rk);
+          if (!old) continue;
+          try {
+            const rp = JSON.parse(old);
+            const hasUserData = rp.events && rp.events.some(e => !(e.id||'').startsWith('demo-'));
+            if (hasUserData) {
+              state.events     = rp.events     || [];
+              state.categories = rp.categories || [...DEFAULT_CATEGORIES];
+              if (rp.settings)  state.settings = { ...DEFAULT_SETTINGS, ...rp.settings };
+              migratedFrom = rk;
+              break;
+            }
+          } catch(e2) { /* skip */ }
+        }
+      }
+      // Миграция legacy: noRecover → recreational
+      state.events.forEach(ev => {
+        if ('noRecover' in ev) {
+          const cat = state.categories.find(c => c.id === ev.categoryId);
+          const defaultRec = (cat?.intensity || 0) > 0;
+          ev.recreational = ev.noRecover === true ? false : defaultRec;
+          delete ev.noRecover;
+        } else if (!('recreational' in ev)) {
+          const cat = state.categories.find(c => c.id === ev.categoryId);
+          ev.recreational = (cat?.intensity || 0) > 0;
+        }
+      });
+      
+      // Добавляем cat-holiday если нет
+      if (!state.categories.find(c => c.id === 'cat-holiday')) {
+        state.categories.push({ id: 'cat-holiday', name: 'Праздники РФ', color: '#DAA520', textColor: '#1A1915', recreational: true, icon: 'flag' });
+      }
+      
+      // Миграция v8→v9: intensity → recreational на категориях
+      state.categories.forEach(cat => {
+        if (cat.recreational === undefined) {
+          // Старая модель: intensity > 0 = разгружает = recreational
+          cat.recreational = (cat.intensity || 0) > 0;
+        }
+        // Особый случай: cat-bday не рекреационное
+        if (cat.id === 'cat-bday') cat.recreational = false;
+        delete cat.intensity;
+        if (!cat.icon) {
+          const defCat = DEFAULT_CATEGORIES.find(d => d.id === cat.id);
+          if (defCat) cat.icon = defCat.icon;
+        }
+      });
+      
+      // Сбрасываем явный recreational=true у событий cat-bday (наследуют от категории = false)
+      state.events.forEach(ev => {
+        if (ev.categoryId === 'cat-bday' && ev.recreational === true) {
+          delete ev.recreational;
+        }
+      });
+
+      // Переименование Праздники → Праздники РФ
+      const holCat = state.categories.find(c => c.id === 'cat-holiday');
+      if (holCat && holCat.name === 'Праздники') holCat.name = 'Праздники РФ';
+      
+      // Миграция: убираем устаревшие settings, добавляем новые
+      if (state.settings.weeks_productive === undefined) {
+        // Миграция: weeks_to_burnout (старый) → weeks_productive (новый)
+        // Раньше weeks_to_burnout=10 → B=20, Усталость при 0.6×B=12. 
+        // Теперь fatigue=weeks_productive×5. Чтобы сохранить ощущение: 12 ≈ weeks_productive×5 → ~2-3 нед (слишком мало).
+        // Поэтому просто ставим дефолт 8
+        state.settings.weeks_productive = 8;
+      }
+      if (state.settings.days_to_full_recovery === undefined) {
+        state.settings.days_to_full_recovery = 14;
+      }
+      ['baselineStress','memoryTau','saturationK','weekendBaseline','showHolidays','showWeekends','allowNegativeLoad','planningHorizon','fadeWindow','holidayIntensity'].forEach(k => delete state.settings[k]);
+      
+      // Миграция спорт-блоков: обновляем если даты устарели
+      const cy = state.settings.currentYear;
+      if (state.sportBlocks && state.sportBlocks.some(sb => sb.dateEnd === `${cy}-04-30` || sb.dateEnd === `${cy}-08-31`)) {
+        state.sportBlocks = defaultSportBlocks(cy);
+      }
+      
+      // Миграция legacy holidays → events
+      const legacyHolidays = parsed.holidays || [];
+      if (legacyHolidays.length > 0 && !state.events.some(e => e.categoryId === 'cat-holiday')) {
+        legacyHolidays.forEach(h => {
+          state.events.push({
+            id: h.id, title: h.name, categoryId: 'cat-holiday',
+            dateStart: h.dateStart, dateEnd: h.dateEnd !== h.dateStart ? h.dateEnd : null,
+            recurring: true, recreational: h.recreational !== false, note: ''
+          });
+        });
+      }
+      
+      // Добавляем категорию "Окна отдыха" если нет
+      if (!state.categories.find(c => c.id === 'cat-rest')) {
+        const travelIdx = state.categories.findIndex(c => c.id === 'cat-travel');
+        const restCat = { id: 'cat-rest', name: 'Окна отдыха', color: '#B8C8C0', textColor: '#1A1915', recreational: true, icon: 'coffee' };
+        if (travelIdx >= 0) state.categories.splice(travelIdx + 1, 0, restCat);
+        else state.categories.unshift(restCat);
+      }
+    } else {
+      state.sportBlocks = defaultSportBlocks(state.settings.currentYear);
+      // Seed example events — из настенного календаря Кирилла + поездки + праздники
+      const y = state.settings.currentYear;
+      const holidayEvents = defaultHolidays(y).map(h => ({
+        id: h.id, title: h.name, categoryId: 'cat-holiday',
+        dateStart: h.dateStart, dateEnd: h.dateEnd !== h.dateStart ? h.dateEnd : null,
+        recurring: true, recreational: true, note: ''
+      }));
+      state.events = [
+        ...holidayEvents,
+        // Поездки
+        { id: 'demo-trip-1', title: 'Геленджик', categoryId: 'cat-travel', dateStart: `${y}-04-09`, dateEnd: `${y}-04-13`, recurring: false, recreational: true, note: '' },
+        { id: 'demo-trip-2', title: 'СПб', categoryId: 'cat-travel', dateStart: `${y}-05-04`, dateEnd: `${y}-05-07`, recurring: false, recreational: true, note: '' },
+        { id: 'demo-trip-3', title: 'Турция Fethiye', categoryId: 'cat-travel', dateStart: `${y}-05-25`, dateEnd: `${y}-06-04`, recurring: false, recreational: true, note: '' },
+        // Соревнования
+        { id: 'demo-race-1', title: 'Iron Man (Half)', categoryId: 'cat-race', dateStart: `${y}-08-09`, dateEnd: null, recurring: false, recreational: true, note: 'A-старт сезона' },
+        // Дни рождения (с холодильника, имена допиши сам)
+        { id: 'demo-dr-1', title: 'ДР Коли', categoryId: 'cat-bday', dateStart: `${y}-04-07`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-2', title: 'ДР сын', categoryId: 'cat-bday', dateStart: `${y}-04-13`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-3', title: 'ДР Маши', categoryId: 'cat-bday', dateStart: `${y}-05-26`, dateEnd: null, recurring: true, recreational: true, note: 'может попасть в Турции' },
+        { id: 'demo-dr-4', title: 'ДР Ани', categoryId: 'cat-bday', dateStart: `${y}-08-08`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-5', title: 'ДР дочи', categoryId: 'cat-bday', dateStart: `${y}-09-08`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-6', title: 'ДР К', categoryId: 'cat-bday', dateStart: `${y}-08-22`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-7', title: 'ДР Артёма', categoryId: 'cat-bday', dateStart: `${y}-11-16`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-8', title: 'Наташа', categoryId: 'cat-bday', dateStart: `${y}-11-21`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-9', title: 'ДР А', categoryId: 'cat-bday', dateStart: `${y}-12-13`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-10', title: 'ДР К', categoryId: 'cat-bday', dateStart: `${y}-12-22`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-11', title: 'ДР А', categoryId: 'cat-bday', dateStart: `${y}-12-24`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-dr-12', title: 'ДР Поле', categoryId: 'cat-bday', dateStart: `${y}-12-29`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        // Личные даты
+        { id: 'demo-personal-1', title: 'Свидание', categoryId: 'cat-personal', dateStart: `${y}-01-10`, dateEnd: null, recurring: true, recreational: true, note: '' },
+        { id: 'demo-personal-2', title: 'Todes', categoryId: 'cat-personal', dateStart: `${y}-04-23`, dateEnd: `${y}-04-24`, recurring: false, recreational: true, note: '' },
+      ];
+    }
+  } catch(e) {
+    console.error('Load failed', e);
+    state.sportBlocks = defaultSportBlocks(state.settings.currentYear);
+  }
+}
+
+// ==================== СИНХРОНИЗАЦИЯ С ФАЙЛОМ ====================
+// Принцип: однократно подключаем JSON-файл (например в iCloud Drive).
+// Все изменения автоматически пишутся в него. При старте — читаем оттуда.
+// Бэкапы по дате хранятся внутри того же файла.
+
+const SYNC_SUPPORTED = typeof window !== 'undefined' && 'showSaveFilePicker' in window;
+let syncFileHandle = null;
+let syncStatus = 'disconnected'; // disconnected | connected | error
+let syncDebounce = null;
+let lastSyncTime = 0;
+
+// --- IndexedDB для хранения FileSystemFileHandle между сессиями ---
+function openSyncDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('freedom-planner-sync', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('handles');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbSetHandle(handle) {
+  const db = await openSyncDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('handles', 'readwrite');
+    tx.objectStore('handles').put(handle, 'main');
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function dbGetHandle() {
+  try {
+    const db = await openSyncDB();
+    return new Promise((res) => {
+      const req = db.transaction('handles', 'readonly').objectStore('handles').get('main');
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  } catch(e) { return null; }
+}
+async function dbClearHandle() {
+  try {
+    const db = await openSyncDB();
+    return new Promise((res) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').delete('main');
+      tx.oncomplete = res; tx.onerror = res;
+    });
+  } catch(e) {}
+}
+
+async function ensurePermission(handle) {
+  const opts = { mode: 'readwrite' };
+  if (!handle.queryPermission) return true;
+  if (await handle.queryPermission(opts) === 'granted') return true;
+  if (await handle.requestPermission(opts) === 'granted') return true;
+  return false;
+}
+
+async function readFromFile(handle) {
+  const file = await handle.getFile();
+  const text = await file.text();
+  if (!text.trim()) return null;
+  return JSON.parse(text);
+}
+
+async function writeToFile(handle, payload) {
+  const writable = await handle.createWritable();
+  await writable.write(JSON.stringify(payload, null, 2));
+  await writable.close();
+}
+
+// Создаёт payload {version, lastSync, current, backups}
+function buildSyncPayload(existingPayload) {
+  const today = new Date().toISOString().slice(0, 10);
+  const backups = (existingPayload && existingPayload.backups) || [];
+  // Если последний бэкап не сегодняшний — добавляем новый
+  if (!backups.length || backups[backups.length - 1].date !== today) {
+    backups.push({ date: today, state: JSON.parse(JSON.stringify(state)) });
+    // Храним до 30 последних
+    while (backups.length > 30) backups.shift();
+  }
+  return {
+    version: 1,
+    lastSync: new Date().toISOString(),
+    current: state,
+    backups
+  };
+}
+
+async function syncWriteNow() {
+  if (!syncFileHandle) return;
+  try {
+    let existing = null;
+    try { existing = await readFromFile(syncFileHandle); } catch(e) {}
+    const payload = buildSyncPayload(existing);
+    await writeToFile(syncFileHandle, payload);
+    lastSyncTime = Date.now();
+    updateSyncIndicator('saved');
+  } catch(e) {
+    console.error('Sync write failed:', e);
+    syncStatus = 'error';
+    updateSyncIndicator('error');
+  }
+}
+
+function syncWriteDebounced() {
+  if (!syncFileHandle) return;
+  if (syncDebounce) clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(syncWriteNow, 1500);
+}
+
+async function syncConnect() {
+  if (!SYNC_SUPPORTED) {
+    alert('File System Access API не поддерживается в этом браузере. Используй Chrome, Edge или Safari 17.4+.');
+    return;
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'freedom-planner-data.json',
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+    });
+    if (!await ensurePermission(handle)) return;
+    
+    // Если файл уже содержит данные — спросить, какие использовать
+    let existing = null;
+    try { existing = await readFromFile(handle); } catch(e) {}
+    
+    if (existing && existing.current) {
+      const useFile = confirm(
+        `Файл уже содержит данные (последняя синхронизация: ${new Date(existing.lastSync || 0).toLocaleString('ru-RU')}). \n\n` +
+        `OK — загрузить данные из файла (текущие данные перезаписать).\n` +
+        `Отмена — оставить текущие данные и перезаписать файл.`
+      );
+      if (useFile) {
+        state = existing.current;
+        rerender();
+        renderSettings();
+      }
+    }
+    
+    await dbSetHandle(handle);
+    syncFileHandle = handle;
+    syncStatus = 'connected';
+    updateSyncIndicator('connected');
+    await syncWriteNow();
+    renderSyncSettings();
+  } catch(e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+}
+
+async function syncDisconnect() {
+  await dbClearHandle();
+  syncFileHandle = null;
+  syncStatus = 'disconnected';
+  updateSyncIndicator('disconnected');
+  renderSyncSettings();
+}
+
+async function syncInit() {
+  if (!SYNC_SUPPORTED) return;
+  const handle = await dbGetHandle();
+  if (!handle) return;
+  // Проверяем разрешение БЕЗ автоматического запроса (требует user gesture)
+  const perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm === 'granted') {
+    syncFileHandle = handle;
+    syncStatus = 'connected';
+    // Загружаем из файла если он новее
+    try {
+      const existing = await readFromFile(handle);
+      if (existing && existing.current && existing.lastSync) {
+        const fileTime = new Date(existing.lastSync).getTime();
+        const localTime = state._savedAt ? new Date(state._savedAt).getTime() : 0;
+        if (fileTime > localTime) {
+          state = existing.current;
+          rerender();
+        }
+      }
+    } catch(e) { console.error('Sync init read failed:', e); }
+    updateSyncIndicator('connected');
+  } else {
+    // Разрешение есть, но нужно подтвердить заново — покажем кнопку
+    syncFileHandle = handle;
+    syncStatus = 'needs-permission';
+    updateSyncIndicator('needs-permission');
+  }
+  renderSyncSettings();
+}
+
+async function syncReauthorize() {
+  if (!syncFileHandle) return;
+  if (await ensurePermission(syncFileHandle)) {
+    syncStatus = 'connected';
+    updateSyncIndicator('connected');
+    renderSyncSettings();
+  }
+}
+
+function updateSyncIndicator(status) {
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  const map = {
+    'disconnected':     { text: '',         color: 'transparent' },
+    'connected':        { text: '✓ синхр.', color: '#7AB08F' },
+    'saved':            { text: '✓ сохр.',  color: '#7AB08F' },
+    'error':            { text: '⚠ ошибка', color: '#D44A4A' },
+    'needs-permission': { text: '⚠ нажми',  color: '#E89F6B' }
+  };
+  const v = map[status] || map['disconnected'];
+  el.textContent = v.text;
+  el.style.color = v.color;
+}
+
+function renderSyncSettings() {
+  const block = document.getElementById('syncBlock');
+  if (!block) return;
+  if (!SYNC_SUPPORTED) {
+    block.innerHTML = '<div class="param-help">Авто-синхронизация недоступна в этом браузере. Используй Chrome, Edge или Safari 17.4+.</div>';
+    return;
+  }
+  if (syncStatus === 'connected') {
+    block.innerHTML = `
+      <div class="param-help" style="color: #7AB08F; margin-bottom: 8px;">✓ Файл подключён — данные сохраняются автоматически</div>
+      <button onclick="syncDisconnect()" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">Отключить файл</button>
+    `;
+  } else if (syncStatus === 'needs-permission') {
+    block.innerHTML = `
+      <div class="param-help" style="color: #E89F6B; margin-bottom: 8px;">⚠ Требуется подтвердить доступ к файлу</div>
+      <button onclick="syncReauthorize()" style="background: var(--text); border: 0.5px solid var(--text); color: var(--bg); padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">Подтвердить</button>
+      <button onclick="syncDisconnect()" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; margin-left: 6px;">Отключить</button>
+    `;
+  } else {
+    block.innerHTML = `
+      <div class="param-help" style="margin-bottom: 8px;">Подключи JSON-файл (например в iCloud Drive) — все изменения и ежедневные бэкапы сохраняются автоматически.</div>
+      <button onclick="syncConnect()" style="background: var(--text); border: 0.5px solid var(--text); color: var(--bg); padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">Подключить файл синхронизации</button>
+    `;
+  }
+}
+
+function save() {
+  try {
+    state._savedAt = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    syncWriteDebounced();
+  } catch(e) {
+    console.error('Save failed', e);
+  }
+}
+
+// ==================== UTILS ====================
+const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function ymd(date) {
+  if (typeof date === 'string') return date;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseYmd(s) {
+  if (!s) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getCategory(id) {
+  return state.categories.find(c => c.id === id) || state.categories[state.categories.length - 1];
+}
+
+function getEventsForYear(year) {
+  const out = [];
+  state.events.forEach(ev => {
+    const start = parseYmd(ev.dateStart);
+    const end = ev.dateEnd ? parseYmd(ev.dateEnd) : start;
+    if (ev.recurring) {
+      // Repeat every year — substitute current year
+      const ms = ev.dateStart.split('-');
+      const me = ev.dateEnd ? ev.dateEnd.split('-') : ms;
+      out.push({
+        ...ev,
+        dateStart: `${year}-${ms[1]}-${ms[2]}`,
+        dateEnd: ev.dateEnd ? `${year}-${me[1]}-${me[2]}` : null,
+        _originalYear: ms[0]
+      });
+    } else {
+      if (start.getFullYear() === year || (end.getFullYear() === year)) {
+        out.push(ev);
+      }
+    }
+  });
+  return out;
+}
+
+function eventDurationDays(ev) {
+  const s = parseYmd(ev.dateStart);
+  const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+  return Math.max(1, Math.round((e - s) / 86400000) + 1);
+}
+
+function isSameDate(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// Рекреационное событие = разгружает. Берём из категории, переопределяется флагом event.recreational
+function isRecreational(ev) {
+  if (ev.recreational === true) return true;
+  if (ev.recreational === false) return false;
+  const cat = getCategory(ev.categoryId);
+  return cat?.recreational === true;
+}
+
+function defaultRecreational(catId) {
+  const cat = state.categories.find(c => c.id === catId);
+  return cat?.recreational === true;
+}
+
+// Горизонт планирования — конец видимости тепловой карты
+// Считаем по будущим НЕ-recurring рекреационным событиям (поездки, отпуска), а не по ДР
+function getHorizonEnd(today) {
+  const baseHorizon = state.settings.planningHorizon || 90;
+  const ms = baseHorizon * 86400000;
+  
+  let maxDate = today;
+  state.events.forEach(ev => {
+    if (!isRecreational(ev)) return;
+    if (ev.recurring) return; // ДР и годовщины не сдвигают горизонт
+    const end = ev.dateEnd ? parseYmd(ev.dateEnd) : parseYmd(ev.dateStart);
+    if (end > maxDate) maxDate = end;
+  });
+  
+  return new Date(maxDate.getTime() + ms);
+}
+
+// ==================== HEATMAP CALCULATION ====================
+// МОДЕЛЬ ОТДЫХА (психология труда, не спорт):
+//   Будний день: +1.0 балл нагрузки
+//   Не-рабочий день (выходной/праздник/рекреационное событие): relief по кривой от длины streak
+//   Кривая отдыха имеет 2 режима:
+//     1. Дни 1..D: снимает нагрузку (вклад отрицательный)
+//     2. Дни D+: ДОБАВЛЯЕТ нагрузку (вклад положительный) — leisure sickness, скука, потеря режима
+// ==================== РАСЧЁТ НАГРУЗКИ ====================
+// Модель (occupational psychology, не спорт):
+//   Будний: +1.0. Выходной/праздник: 0. Только рекреационные события снимают нагрузку.
+//   Кривая fraction(streak): форма из De Bloom 2010, Strauss-Blasche, Sonnentag 2007
+//   Насыщение Hill B²/(B²+load²): замедляет восстановление при высокой нагрузке
+//     согласуется с Maslach (2016): mild burnout 4-8 нед, moderate 3-6 мес
+//   Floor=0, без потолка (severe burnout → долгое восстановление)
+
+function calculateDailyLoad(year) {
+  const startDate = new Date(year, 0, 1);
+  const endDate   = new Date(year, 11, 31);
+  const days = Math.round((endDate - startDate) / 86400000) + 1;
+
+  const yearEvents = getEventsForYear(year);
+  const D  = state.settings.days_to_full_recovery || 14;  // масштаб кривой
+  const BT = getBurnoutThreshold();                        // для Hill насыщения
+
+  // Опорная кривая fraction(streak) при D=14.
+  // Источники: De Bloom 2010 (n=96, пик d8), Strauss-Blasche (d5-14 plateau),
+  // Sonnentag & Bennett 2007 (d3-7 detachment). Масштабируется на D/14.
+  const FRAC_REF = [
+    [1,  0.08], [2,  0.13], [3,  0.18], [5,  0.22],
+    [7,  0.23], [10, 0.20], [14, 0.15], [18, 0.10],
+    [21, 0.05], [30, 0.02], [60, 0.02]
+  ];
+
+  function fractionForDay(streakDay) {
+    if (streakDay <= 0) return 0;
+    const ref = streakDay * (14 / D);
+    if (ref >= FRAC_REF[FRAC_REF.length - 1][0]) return FRAC_REF[FRAC_REF.length - 1][1];
+    for (let i = 0; i < FRAC_REF.length - 1; i++) {
+      if (ref <= FRAC_REF[i+1][0]) {
+        const t = (ref - FRAC_REF[i][0]) / (FRAC_REF[i+1][0] - FRAC_REF[i][0]);
+        return FRAC_REF[i][1] + t * (FRAC_REF[i+1][1] - FRAC_REF[i][1]);
+      }
+    }
+    return 0;
+  }
+
+  // Карта рекреационных дней
+  const recOnDay = new Array(days).fill(false);
+  yearEvents.forEach(ev => {
+    if (!isRecreational(ev)) return;
+    const s = parseYmd(ev.dateStart);
+    const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+    if (!s) return;
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      if (d.getFullYear() !== year) continue;
+      const idx = Math.round((d - startDate) / 86400000);
+      if (idx >= 0 && idx < days) recOnDay[idx] = true;
+    }
+  });
+
+  const dailyContribution = new Array(days);
+  const load = new Array(days);
+  let current = 0;  // стартуем с 0
+  let streak  = 0;  // streak только по дням внутри рекреационных событий
+
+  for (let i = 0; i < days; i++) {
+    const d   = new Date(year, 0, 1 + i);
+    const dow = d.getDay();
+    const isWeekend = (dow === 0 || dow === 6);
+
+    if (recOnDay[i]) {
+      streak++;
+      const frac = fractionForDay(streak);
+      let relief;
+      if (state.settings.useHillSaturation) {
+        const hill = (BT * BT) / (BT * BT + current * current + 1e-9);
+        relief = current * frac * hill;
+      } else {
+        relief = current * frac;
+      }
+      dailyContribution[i] = -relief;
+    } else if (isWeekend) {
+      // Выходной без рекреации: ноль, streak не растёт
+      streak = 0;
+      dailyContribution[i] = 0;
+    } else {
+      // Будний день (включая нерекреационные события)
+      streak = 0;
+      dailyContribution[i] = 1.0;
+    }
+
+    current += dailyContribution[i];
+    if (current < 0) current = 0;  // floor = 0
+    load[i] = current;
+  }
+
+  return { dailyContribution, load, startDate };
+}
+
+function heatColor(loadValue, date, horizonEnd) {
+  if (!state.settings.showHeatmap) return 'transparent';
+  
+  const bands = getHeatColorBands();
+  let bucket = bands[bands.length - 1];
+  for (const b of bands) {
+    if (loadValue < b.max) { bucket = b; break; }
+  }
+  const [r, g, bb, a] = bucket.rgba;
+  if (a === 0) return 'transparent';
+  
+  return `rgba(${r}, ${g}, ${bb}, ${a.toFixed(3)})`;
+}
+
+function heatLabel(loadValue) {
+  const groups = getHeatGroups();
+  for (const g of groups) {
+    if (loadValue < g.max) return g.label;
+  }
+  return groups[groups.length - 1].label;
+}
+
+function heatHint(loadValue) {
+  const groups = getHeatGroups();
+  for (const g of groups) {
+    if (loadValue < g.max) return g.hint;
+  }
+  return groups[groups.length - 1].hint;
+}
+
+// Российский формат даты: DD.MM.YYYY
+function formatDateRU(dateStr) {
+  if (!dateStr) return '';
+  const d = parseYmd(dateStr);
+  if (!d) return dateStr;
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Цвет события = цвет его категории (единый источник: state.categories)
+function getEventColor(ev) {
+  const cat = getCategory(ev.categoryId);
+  return cat ? cat.color : '#BFB8AE';
+}
+
+// loadTo9: пороги под вариант B (4 группы базово + Гипотонус)
+function loadTo9(val) {
+  if (val < -16) return 0;
+  if (val < -10) return 1;   // Гипотонус
+  if (val <  -3) return 2;
+  if (val <   3) return 3;   // Суперресурс
+  if (val <   8) return 4;   // Норма
+  if (val <  14) return 5;
+  if (val <  18) return 6;   // Подусталость
+  if (val <  22) return 7;
+  if (val <  30) return 8;
+  return 9;                  // Сильная усталость
+}
+function renderYearGrid() {
+  const year = state.settings.currentYear;
+  const grid = document.getElementById('yearGrid');
+  grid.innerHTML = '';
+  
+  const today = new Date();
+  const todayY = today.getFullYear();
+  const todayM = today.getMonth();
+  const todayD = today.getDate();
+  
+  const heatmap = calculateDailyLoad(year);
+  const CELL_H = 22; // должно совпадать с CSS .day-cell height
+  const todayMidnight = new Date(todayY, todayM, todayD);
+  const horizonEnd = getHorizonEnd(todayMidnight);
+  
+  // === HEADER ROW ===
+  grid.appendChild(elt('div', 'row-header-blank', ''));
+  for (let m = 0; m < 12; m++) {
+    const h = elt('div', 'month-header', MONTH_NAMES[m]);
+    if (year === todayY && m === todayM) h.classList.add('is-current');
+    grid.appendChild(h);
+  }
+  
+  const allYearEvents = getEventsForYear(year);
+  const hiddenCats = state.settings.hiddenCategories || [];
+  // Фильтруем по скрытым категориям + toggle "Праздники" из легенды
+  const yearEvents = allYearEvents.filter(e => !hiddenCats.includes(e.categoryId));
+  // Для isHolidayDate нужны все cat-holiday события (даже если скрыты — для золотых чисел не нужно, но для расчёта нагрузки да)
+  const holidayEvents = allYearEvents.filter(e => e.categoryId === 'cat-holiday' && !hiddenCats.includes('cat-holiday'));
+  const isMulti = (ev) => {
+    const s = parseYmd(ev.dateStart);
+    const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+    return !isSameDate(s, e);
+  };
+  
+  // isHolidayDate использует allYearEvents (из определения выше)
+  const isHolidayDate = (d) => holidayEvents.some(ev => {
+    const s = parseYmd(ev.dateStart);
+    const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+    return d >= s && d <= e;
+  });
+  
+  // === BODY: 12 month columns ===
+  for (let m = 0; m < 12; m++) {
+    const col = document.createElement('div');
+    col.className = 'month-col';
+    
+    const dim = daysInMonth(year, m);
+    const monthStart = new Date(year, m, 1);
+    const monthEnd = new Date(year, m, dim);
+    
+    // Day cells (background layer with heat coloring)
+    for (let d = 1; d <= 31; d++) {
+      const cell = elt('div', 'day-cell', '');
+      if (d > dim) {
+        cell.classList.add('empty');
+        col.appendChild(cell);
+        continue;
+      }
+      
+      const date = new Date(year, m, d);
+      const dateStr = ymd(date);
+      cell.setAttribute('data-date', dateStr);
+      
+      const dow = date.getDay();
+      const isWeekend = (dow === 0 || dow === 6);
+      
+      if (isWeekend) cell.classList.add('weekend');
+      if (isHolidayDate(date)) cell.classList.add('holiday');
+      
+      const isPast = date < new Date(todayY, todayM, todayD);
+      const isToday = year === todayY && m === todayM && d === todayD;
+      if (isPast && !isToday) cell.classList.add('past');
+      if (isToday) cell.classList.add('today');
+      
+      const dayIdx = Math.round((date - heatmap.startDate) / 86400000);
+      const loadVal = heatmap.load[dayIdx] || 0;
+      cell.style.background = heatColor(loadVal, date, horizonEnd);
+      
+      // Короткий tooltip: дата + нагрузка 0-9
+      const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const rawLoad = loadVal.toFixed(1);
+      let tipText = `${d}.${String(m+1).padStart(2,'0')}.${year} (${dayNames[dow]})\nНагрузка: ${rawLoad} — ${heatLabel(loadVal)}`;
+      
+      const hol = holidayEvents.find(ev => {
+        const s = parseYmd(ev.dateStart), e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+        return date >= s && date <= e;
+      });
+      if (hol) tipText += `\n🇷🇺 ${hol.title}`;
+      
+      cell.setAttribute('data-tooltip', tipText);
+      
+      cell.onclick = () => openEventModal(null, dateStr);
+      col.appendChild(cell);
+    }
+    
+    // === LAYER 1: Multi-day event bars (z=2) ===
+    const todayDate = new Date(todayY, todayM, todayD);
+    yearEvents.filter(ev => {
+      if (!isMulti(ev)) return false;
+      const s = parseYmd(ev.dateStart);
+      const e = parseYmd(ev.dateEnd);
+      return !(e < monthStart || s > monthEnd);
+    }).forEach(ev => {
+      const s = parseYmd(ev.dateStart);
+      const e = parseYmd(ev.dateEnd);
+      const segStart = s < monthStart ? monthStart : s;
+      const segEnd = e > monthEnd ? monthEnd : e;
+      const startDay = segStart.getDate();
+      const duration = Math.round((segEnd - segStart) / 86400000) + 1;
+      
+      const cat = getCategory(ev.categoryId);
+      const bar = document.createElement('div');
+      bar.className = 'event-bar';
+      const isEvRec = isRecreational(ev);
+      if (isEvRec) bar.classList.add('recreational');
+      if (ev.autoPlanned) bar.classList.add('auto-planned');
+      const evColor = getEventColor(ev);
+      bar.style.background = hexToRgba(evColor, 0.18);
+      bar.style.borderLeftColor = evColor;
+      bar.style.color = 'var(--text)';
+      bar.style.setProperty('--event-color', evColor);
+      bar.style.top    = `${(startDay - 1) * CELL_H + 1}px`;
+      bar.style.height = `${duration * CELL_H - 2}px`;
+      bar.setAttribute('data-event-id', ev.id);
+
+      if (ev.autoPlanned) {
+        // Визуальный слой — без взаимодействия
+        bar.style.pointerEvents = 'none';
+        bar.style.cursor = 'default';
+        // Штриховка цветом категории поездок
+        bar.style.borderLeft = `2px dashed ${hexToRgba(evColor, 0.55)}`;
+        bar.style.background = `repeating-linear-gradient(45deg, ${hexToRgba(evColor, 0.13)}, ${hexToRgba(evColor, 0.13)} 3px, transparent 3px, transparent 8px)`;
+      } else {
+        // Ручки для resize
+        const rTop = document.createElement('div');
+        rTop.className = 'resize-handle resize-handle-top';
+        rTop.setAttribute('data-resize', 'start');
+        rTop.setAttribute('data-event-id', ev.id);
+        const rBot = document.createElement('div');
+        rBot.className = 'resize-handle resize-handle-bottom';
+        rBot.setAttribute('data-resize', 'end');
+        rBot.setAttribute('data-event-id', ev.id);
+        bar.appendChild(rTop);
+        bar.appendChild(rBot);
+        bar.style.cursor = 'grab';
+        bar.onclick = (e) => { e.stopPropagation(); openEventModal(ev.id); };
+      }
+
+      // Прошлое — приглушаем
+      if (e < todayDate) bar.style.opacity = ev.autoPlanned ? '0.35' : '0.55';
+
+      if (s >= monthStart) bar.textContent = ev.title;
+
+      bar.setAttribute('data-tooltip', `${ev.title}\n${formatDateRU(ev.dateStart)}${ev.dateEnd ? ' — ' + formatDateRU(ev.dateEnd) : ''}${ev.note ? '\n\n' + ev.note : ''}`);
+
+      col.appendChild(bar);
+    });
+    
+    // === LAYER 2: Single-day point events (z=3, или z=4 если overlay) ===
+    yearEvents.filter(ev => {
+      if (isMulti(ev)) return false;
+      const s = parseYmd(ev.dateStart);
+      return s >= monthStart && s <= monthEnd;
+    }).forEach(ev => {
+      const s = parseYmd(ev.dateStart);
+      const startDay = s.getDate();
+      const cat = getCategory(ev.categoryId);
+      
+      // Проверим, попадает ли этот день внутрь многодневного события
+      const overlapsBar = yearEvents.some(other => {
+        if (other.id === ev.id) return false;
+        if (!isMulti(other)) return false;
+        const os = parseYmd(other.dateStart);
+        const oe = parseYmd(other.dateEnd);
+        return s >= os && s <= oe;
+      });
+      
+      const point = document.createElement('div');
+      const isEvRecP = isRecreational(ev);
+      point.className = 'event-bar point' + (overlapsBar ? ' point-overlay' : '');
+      if (isEvRecP) point.classList.add('recreational');
+      point.style.color = 'var(--text)';
+      point.style.setProperty('--event-color', getEventColor(ev));
+      point.style.top = `${(startDay - 1) * CELL_H}px`;
+      point.setAttribute('data-event-id', ev.id);
+      
+      const maxLen = 14;
+      const titleText = ev.title.length > maxLen ? ev.title.substring(0, maxLen - 1) + '…' : ev.title;
+      
+      point.textContent = titleText;
+      
+      point.setAttribute('data-tooltip', `${ev.title}\n${formatDateRU(ev.dateStart)}${ev.note ? '\n\n' + ev.note : ''}`);
+      point.onclick = (e) => { e.stopPropagation(); openEventModal(ev.id); };
+      col.appendChild(point);
+    });
+    
+    // === LAYER 4: Day numbers (поверх всего) ===
+    for (let d = 1; d <= dim; d++) {
+      const date = new Date(year, m, d);
+      const dow = date.getDay();
+      const isWeekend = (dow === 0 || dow === 6);
+      const isHoliday = isHolidayDate(date);
+      
+      const numSpan = document.createElement('span');
+      numSpan.className = 'day-num' + (isHoliday ? ' holiday' : isWeekend ? ' weekend' : '');
+      numSpan.textContent = d;
+      numSpan.style.top = `${(d - 1) * CELL_H + 11}px`;  // центр ячейки
+      col.appendChild(numSpan);
+    }
+    
+    grid.appendChild(col);
+  }
+  
+  renderSportStrip();
+}
+
+function renderSportStrip() {
+  // Убираем старый sportStrip если есть (legacy)
+  const legacyStrip = document.getElementById('sportStrip');
+  if (legacyStrip) { legacyStrip.innerHTML = ''; legacyStrip.style.display = 'none'; }
+  
+  // Вставляем полосу КАК ПОСЛЕДНИЙ РЯД внутри yearGrid (grid-column: 1/-1)
+  const grid = document.getElementById('yearGrid');
+  let stripRow = document.getElementById('sportStripRow');
+  if (!stripRow) {
+    stripRow = document.createElement('div');
+    stripRow.id = 'sportStripRow';
+    stripRow.style.gridColumn = '1 / -1';
+    stripRow.style.marginTop = '16px';
+    stripRow.style.paddingTop = '10px';
+    stripRow.style.borderTop = '0.5px solid var(--border-light)';
+    grid.appendChild(stripRow);
+  }
+  stripRow.innerHTML = '';
+  
+  if (!state.settings.showSport) return;
+  
+  const year = state.settings.currentYear;
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31);
+  const yearMs = yearEnd - yearStart;
+  
+  const inner = document.createElement('div');
+  inner.className = 'sport-strip-track-inner';
+  inner.style.position = 'relative';
+  inner.style.height = '30px';
+  inner.style.width = '100%';
+  
+  state.sportBlocks.forEach(sb => {
+    const s = parseYmd(sb.dateStart);
+    const e = parseYmd(sb.dateEnd);
+    if (!s || !e) return;
+    if (s > yearEnd || e < yearStart) return;
+    
+    const sClamp = s < yearStart ? yearStart : s;
+    const eClamp = e > yearEnd   ? yearEnd   : e;
+    const leftPct  = ((sClamp - yearStart) / yearMs) * 100;
+    const widthPct = ((eClamp - sClamp + 86400000) / yearMs) * 100;
+    
+    const blockBg = sb.color || PHASE_COLORS[sb.phase] || '#888';
+    const block = document.createElement('div');
+    block.className = 'sport-block';
+    block.style.background = blockBg;
+    block.style.color = isLightColor(blockBg) ? '#1A1915' : 'white';
+    block.style.left = `${leftPct}%`;
+    block.style.width = `${widthPct}%`;
+    block.style.top = '0';
+    block.textContent = sb.name;
+    block.setAttribute('data-tooltip', `${sb.name} (${sb.dateStart} – ${sb.dateEnd})${sb.note ? '\n' + sb.note : ''}\n\nКлик — редактировать`);
+    block.onclick = () => openSportBlockModal(sb.id);
+    inner.appendChild(block);
+  });
+  
+  // Кнопка "+" — добавить новый блок
+  const addBtn = document.createElement('button');
+  addBtn.className = 'sport-add-btn';
+  addBtn.textContent = '+';
+  addBtn.title = 'Добавить спортивный период';
+  addBtn.onclick = () => {
+    const y = state.settings.currentYear;
+    const newBlock = {
+      id: 'sb-new-' + Date.now(),
+      name: 'Новый период',
+      phase: 'base',
+      color: '#999999',
+      dateStart: `${y}-01-01`,
+      dateEnd: `${y}-03-31`,
+      intensity: 0,
+      note: ''
+    };
+    state.sportBlocks.push(newBlock);
+    save();
+    rerender();
+    openSportBlockModal(newBlock.id);
+  };
+  inner.appendChild(addBtn);
+  
+  stripRow.appendChild(inner);
+}
+
+// ==================== RENDER LEGEND ====================
+function renderLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  
+  const hidden = state.settings.hiddenCategories || [];
+  
+  // Категории — кликабельные toggles
+  state.categories.forEach(cat => {
+    const item = elt('div', 'legend-item legend-cat', '');
+    if (hidden.includes(cat.id)) item.classList.add('off');
+    const sw = elt('div', 'legend-swatch', '');
+    sw.style.background = cat.color;
+    item.appendChild(sw);
+    item.appendChild(document.createTextNode(cat.name));
+    item.onclick = () => {
+      const idx = hidden.indexOf(cat.id);
+      if (idx >= 0) hidden.splice(idx, 1);
+      else hidden.push(cat.id);
+      state.settings.hiddenCategories = hidden;
+      save(); rerender();
+    };
+    legend.appendChild(item);
+  });
+  
+  // Разделитель
+  legend.appendChild(elt('div', 'legend-divider', ''));
+  
+  // Toggle: Спорт
+  const sportItem = elt('div', 'legend-item legend-toggle', '');
+  if (!state.settings.showSport) sportItem.classList.add('off');
+  const sportSw = elt('div', 'legend-swatch', '');
+  sportSw.style.background = '#B07878';
+  sportItem.appendChild(sportSw);
+  sportItem.appendChild(document.createTextNode('Спорт'));
+  sportItem.onclick = () => { state.settings.showSport = !state.settings.showSport; save(); rerender(); };
+  legend.appendChild(sportItem);
+  
+  // Toggle: Нагрузка
+  const heatItem = elt('div', 'legend-item legend-toggle', '');
+  if (!state.settings.showHeatmap) heatItem.classList.add('off');
+  heatItem.setAttribute('data-popover', 'heat');
+  const heatSw = elt('div', 'heat-legend-bar', '');
+  activeHeatGroups().forEach(g => {
+    const d = elt('div', 'heat-legend-cell', '');
+    const [r, gg, bb, a] = g.swatch;
+    d.style.background = `rgba(${r}, ${gg}, ${bb}, ${a})`;
+    heatSw.appendChild(d);
+  });
+  heatItem.appendChild(heatSw);
+  heatItem.appendChild(document.createTextNode(' Нагрузка'));
+  heatItem.onclick = () => { state.settings.showHeatmap = !state.settings.showHeatmap; save(); rerender(); };
+  legend.appendChild(heatItem);
+}
+
+// ==================== TIMELINE VIEW ====================
+
+function tlGetRange() {
+  const year  = state.settings.currentYear;
+  const scale = state.settings.timelineScale || 'year';
+  return {
+    viewStart: new Date(year, 0, 1),
+    viewEnd:   new Date(year, 11, 31)
+  };
+}
+
+function tlNav(dir) {
+  state.settings.currentYear = (state.settings.currentYear || new Date().getFullYear()) + dir;
+  document.getElementById('yearDisplay').textContent = state.settings.currentYear;
+  save(); renderTimeline();
+}
+
+function tlSetScale(scale) {
+  state.settings.timelineScale  = scale;
+  state.settings.timelineOffset = 0;
+  save(); renderTimeline();
+}
+
+function renderTimeline() {
+  const container = document.getElementById('timelineContainer');
+  container.innerHTML = '';
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = '';
+
+  const year    = state.settings.currentYear;
+  const today   = new Date();
+  const scale   = state.settings.timelineScale  || 'year';
+  const offset  = state.settings.timelineOffset || 0;
+  const { viewStart, viewEnd } = tlGetRange();
+  const viewMs  = viewEnd.getTime() - viewStart.getTime() + 86400000;
+
+  // Ширина трека в px для вычисления max-width лейблов
+  const labelColW = 108; // 100px label + 8px gap
+  const trackPxW  = Math.max(container.clientWidth - labelColW - 24, 200) * (scale === 'quarter' ? 4 : 1);
+
+  // === Кнопки масштаба ===
+  ['Quarter','Year'].forEach(s => {
+    const btn = document.getElementById('tlBtn' + s);
+    if (btn) btn.classList.toggle('active', scale === s.toLowerCase());
+  });
+
+  // === Метка диапазона ===
+  const lbl = document.getElementById('tlRangeLabel');
+  if (lbl) lbl.textContent = year;
+  const prevBtn = document.getElementById('tlPrev');
+  const nextBtn = document.getElementById('tlNext');
+  if (prevBtn) prevBtn.style.visibility = 'visible';
+  if (nextBtn) nextBtn.style.visibility = 'visible';
+
+  // === Функция позиции ===
+  function pct(date) {
+    return ((date.getTime() - viewStart.getTime()) / viewMs) * 100;
+  }
+  function widthPct(s, e) {
+    return ((e.getTime() - s.getTime() + 86400000) / viewMs) * 100;
+  }
+
+  // === Шапка ===
+  const header = elt('div', 'timeline-header', '');
+  header.appendChild(elt('div', '', '')); // spacer
+  const tlHead = document.createElement('div');
+  tlHead.className = 'timeline-track';
+  tlHead.style.height = '20px';
+  tlHead.style.background = 'transparent';
+
+  if (scale === 'year') {
+    const g = document.createElement('div');
+    g.style.cssText = 'display:grid;grid-template-columns:repeat(12,1fr);height:100%;position:absolute;inset:0;';
+    for (let m = 0; m < 12; m++) {
+      const d = document.createElement('div');
+      d.style.cssText = 'font-size:10px;color:var(--muted);font-weight:500;text-align:center;border-right:0.5px solid var(--border-light);';
+      d.textContent = MONTH_NAMES[m].substring(0, 3);
+      g.appendChild(d);
+    }
+    tlHead.appendChild(g);
+  } else if (scale === 'quarter') {
+    // 3 месяца с названиями
+    const g = document.createElement('div');
+    g.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);height:100%;position:absolute;inset:0;';
+    for (let i = 0; i < 3; i++) {
+      const mIdx = Math.min(offset + i, 11);
+      const d = document.createElement('div');
+      d.style.cssText = 'font-size:10px;color:var(--muted);font-weight:500;text-align:center;border-right:0.5px solid var(--border-light);display:flex;align-items:center;justify-content:center;';
+      d.textContent = MONTH_NAMES[mIdx];
+      g.appendChild(d);
+    }
+    tlHead.appendChild(g);
+  }
+  header.appendChild(tlHead);
+  wrapper.appendChild(header);
+
+  // === Порог для показа label ===
+  const LABEL_THRESHOLD = scale === 'year' ? 5 : 3;
+
+  const yearEvents = getEventsForYear(year).filter(ev => {
+    const s = parseYmd(ev.dateStart);
+    const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+    return e >= viewStart && s <= viewEnd;
+  });
+
+  function makeEventBlock(label, lpct, wpct, bg, opts = {}) {
+    const block = document.createElement('div');
+    block.className = 'timeline-event';
+    const clippedLeft  = Math.max(0,   lpct);
+    const clippedRight = Math.min(100, lpct + wpct);
+    const clippedW     = Math.max(0,   clippedRight - clippedLeft);
+    block.style.left  = `${clippedLeft}%`;
+    block.style.width = `${Math.max(clippedW, 0.4)}%`;
+
+    const bar = document.createElement('div');
+    bar.className = 'te-bar';
+    bar.style.background = hexToRgba(bg, opts.autoPlanned ? 0.1 : 0.22);
+    bar.style.borderLeftColor = bg;
+    if (opts.autoPlanned) bar.style.borderLeftStyle = 'dashed';
+    block.appendChild(bar);
+
+    // Лейбл всегда от левого края плашки. Текст выходит вправо если длиннее.
+    // Обрезается max-width = расстояние до следующего события.
+    if (opts.labelMaxPx > 20) {
+      block.style.overflow = 'visible';
+      const labelEl = document.createElement('div');
+      labelEl.className = 'te-label';
+      labelEl.textContent = label;
+      labelEl.style.color = bg;
+      labelEl.style.maxWidth = `${opts.labelMaxPx}px`;
+      labelEl.style.overflow = 'hidden';
+      block.appendChild(labelEl);
+    }
+
+    if (opts.eventId) block.setAttribute('data-event-id', opts.eventId);
+    if (opts.tooltip)  block.setAttribute('data-tooltip', opts.tooltip);
+    if (!opts.autoPlanned) block.onclick = () => openEventModal(opts.eventId);
+    else block.style.pointerEvents = 'none';
+    return block;
+  }
+
+  function makeTrack() {
+    const track = elt('div', 'timeline-track', '');
+    const inner = document.createElement('div');
+    inner.className = 'timeline-track-inner';
+
+    // Фоновые деления
+    if (scale === 'year') {
+      const mb = elt('div', 'timeline-months', '');
+      for (let m = 0; m < 12; m++) mb.appendChild(elt('div', 'timeline-month-bg', ''));
+      inner.appendChild(mb);
+    } else if (scale === 'quarter') {
+      const mb = document.createElement('div');
+      mb.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);position:absolute;inset:0;';
+      for (let i = 0; i < 3; i++) {
+        const d = document.createElement('div');
+        d.style.cssText = 'border-right:0.5px solid var(--border-light);' + (i%2===0 ? 'background:rgba(0,0,0,0.012);' : '');
+        mb.appendChild(d);
+      }
+      inner.appendChild(mb);
+    } else {
+      // Недели
+      const mb = document.createElement('div');
+      mb.style.cssText = 'position:absolute;inset:0;';
+      let d = new Date(viewStart);
+      while (d <= viewEnd) {
+        const p = pct(d);
+        if (p >= 0 && p <= 100) {
+          const sep = document.createElement('div');
+          sep.style.cssText = `position:absolute;left:${p}%;top:0;bottom:0;width:0.5px;background:var(--border-light);`;
+          mb.appendChild(sep);
+        }
+        d = new Date(d); d.setDate(d.getDate() + 7);
+      }
+      inner.appendChild(mb);
+    }
+
+    track.appendChild(inner);
+    return track;
+  }
+
+  // === Строки категорий ===
+  state.categories.forEach(cat => {
+    const catEvents = yearEvents.filter(e => e.categoryId === cat.id);
+    if (catEvents.length === 0) return;
+
+    const row = elt('div', 'timeline-row', '');
+    row.appendChild(elt('div', 'timeline-label', cat.name));
+    const track = makeTrack();
+
+    catEvents.sort((a,b) => parseYmd(a.dateStart) - parseYmd(b.dateStart));
+
+    catEvents.forEach((ev, idx) => {
+      if (ev.autoPlanned) return;
+      const s = parseYmd(ev.dateStart);
+      const e = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+      const lp = pct(s);
+      const wp = widthPct(s, e);
+      const evColor = getEventColor(ev);
+
+      // labelMaxPx: расстояние от начала плашки до следующего события в px
+      const nextVisible = catEvents.slice(idx + 1).find(ne => !ne.autoPlanned);
+      const nextLp = nextVisible ? pct(parseYmd(nextVisible.dateStart)) : 101;
+      const spanPct = Math.max(0, nextLp - lp);
+      const labelMaxPx = Math.floor(spanPct / 100 * trackPxW) - 6;
+
+      const block = makeEventBlock(ev.title, lp, wp, evColor, {
+        eventId: ev.id,
+        labelMaxPx,
+        tooltip: `${ev.title}\n${formatDateRU(ev.dateStart)}${ev.dateEnd ? ' — ' + formatDateRU(ev.dateEnd) : ''}${ev.note ? '\n\n' + ev.note : ''}`
+      });
+      track.appendChild(block);
+    });
+
+    if (today >= viewStart && today <= viewEnd) {
+      const tm = elt('div', 'timeline-today', '');
+      tm.style.left = `${pct(today)}%`;
+      track.appendChild(tm);
+    }
+    row.appendChild(track);
+    wrapper.appendChild(row);
+  });
+
+  // === Sport row ===
+  if (state.settings.showSport && state.sportBlocks.length > 0) {
+    const row = elt('div', 'timeline-row', '');
+    row.appendChild(elt('div', 'timeline-label', 'Спорт'));
+    const track = makeTrack();
+    const visibleSportBlocks = state.sportBlocks
+      .filter(sb => {
+        const s = parseYmd(sb.dateStart);
+        const e = parseYmd(sb.dateEnd);
+        return s && e && !(e < viewStart || s > viewEnd);
+      })
+      .sort((a,b) => parseYmd(a.dateStart) - parseYmd(b.dateStart));
+
+    visibleSportBlocks.forEach((sb, idx) => {
+      const s = parseYmd(sb.dateStart);
+      const e = parseYmd(sb.dateEnd);
+      const lp = pct(s);
+      const wp = widthPct(s, e);
+      const bg = sb.color || '#B07878';
+
+      const nextSb = visibleSportBlocks[idx + 1];
+      const nextLp = nextSb ? pct(parseYmd(nextSb.dateStart)) : 101;
+      const spanPct = Math.max(0, nextLp - lp);
+      const labelMaxPx = Math.floor(spanPct / 100 * trackPxW) - 6;
+
+      const block = makeEventBlock(sb.name, lp, wp, bg, {
+        labelMaxPx,
+        tooltip: `${sb.name}\n${sb.dateStart} – ${sb.dateEnd}${sb.note ? '\n\n' + sb.note : ''}`
+      });
+      track.appendChild(block);
+    });
+    if (today >= viewStart && today <= viewEnd) {
+      const tm = elt('div', 'timeline-today', '');
+      tm.style.left = `${pct(today)}%`;
+      track.appendChild(tm);
+    }
+    row.appendChild(track);
+    wrapper.appendChild(row);
+  }
+
+  // === Строка нагрузки ===
+  if (state.settings.showHeatmap) {
+    const heatmap = calculateDailyLoad(year);
+    const row = elt('div', 'timeline-row', '');
+    row.appendChild(elt('div', 'timeline-label', 'Нагрузка'));
+    const track = makeTrack();
+    track.style.height = '18px';
+
+    // Определяем шаг (день/неделя)
+    const step = scale === 'quarter' ? 2 : 7;
+    let d = new Date(viewStart);
+    while (d <= viewEnd) {
+      const nextD = new Date(d); nextD.setDate(d.getDate() + step);
+      const lp = Math.max(0, pct(d));
+      const wp = pct(nextD) - pct(d);
+      if (lp < 100 && wp > 0) {
+        const idx = Math.round((d.getTime() - heatmap.startDate.getTime()) / 86400000);
+        const loadVal = heatmap.load[Math.max(0, Math.min(idx, heatmap.load.length - 1))] || 0;
+        const color = heatColor(loadVal, d, null);
+        if (color && color !== 'transparent') {
+          const cell = document.createElement('div');
+          cell.style.cssText = `position:absolute;left:${lp}%;width:${Math.min(wp, 100 - lp)}%;top:0;bottom:0;background:${color};`;
+          track.appendChild(cell);
+        }
+      }
+      d = nextD;
+    }
+    row.appendChild(track);
+    wrapper.appendChild(row);
+  }
+
+  container.appendChild(wrapper);
+
+  if (scale === 'quarter') {
+    // Явная px-ширина — 4× видимая ширина контейнера (min-width % ненадёжен в scroll-контейнере)
+    const trackW = container.clientWidth - 108; // минус label 100px + gap 8px
+    wrapper.style.width = `${108 + trackW * 4}px`;
+    container.style.overflowX = 'auto';
+    container.style.overflowY = 'hidden';
+    container.onwheel = (e) => {
+      if (Math.abs(e.deltaX) > 5) return;
+      if (Math.abs(e.deltaY) > 0) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+  } else {
+    wrapper.style.width = '';
+    container.style.overflowX = 'hidden';
+    container.style.overflowY = 'hidden';
+    container.onwheel = null;
+  }
+}
+
+// ==================== LIST VIEW ====================
+function renderList() {
+  const container = document.getElementById('listContainer');
+  container.innerHTML = '';
+  
+  const year = state.settings.currentYear;
+  const yearEvents = getEventsForYear(year);
+  
+  // Sort by date
+  yearEvents.sort((a, b) => parseYmd(a.dateStart) - parseYmd(b.dateStart));
+  
+  let currentMonth = -1;
+  yearEvents.forEach(ev => {
+    const s = parseYmd(ev.dateStart);
+    if (s.getMonth() !== currentMonth) {
+      currentMonth = s.getMonth();
+      container.appendChild(elt('div', 'list-month', MONTH_NAMES[currentMonth]));
+    }
+    
+    const item = elt('div', 'list-item', '');
+    const date = ev.dateEnd ? `${s.getDate()}—${parseYmd(ev.dateEnd).getDate()}` : `${s.getDate()}`;
+    
+    const dateDiv = elt('div', 'list-date', date);
+    const swatch = elt('div', 'list-cat-swatch', '');
+    const cat = getCategory(ev.categoryId);
+    swatch.style.background = getEventColor(ev);
+    const title = elt('div', 'list-title', ev.title);
+    const duration = ev.dateEnd ? elt('div', 'list-duration', `${eventDurationDays(ev)} дн`) : elt('div', 'list-duration', '');
+    
+    item.appendChild(dateDiv);
+    item.appendChild(swatch);
+    item.appendChild(title);
+    item.appendChild(duration);
+    
+    item.onclick = () => openEventModal(ev.id);
+    container.appendChild(item);
+  });
+  
+  if (yearEvents.length === 0) {
+    container.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--muted);">Событий нет. Нажми «+» внизу, чтобы добавить.</div>';
+  }
+}
+
+// ==================== STATUS ====================
+function renderStatus() {
+  const year = state.settings.currentYear;
+  const today = new Date();
+  const heatmap = calculateDailyLoad(year);
+  
+  // Current streak — days since last long recreational rest (by category, >= 3 days)
+  let streak = 0;
+  if (today.getFullYear() === year) {
+    const todayIdx = Math.round((today - heatmap.startDate) / 86400000);
+    const yearEvents = getEventsForYear(year);
+    
+    let lastRecoveryEnd = new Date(year, 0, 1);
+    yearEvents.forEach(ev => {
+      const cat = getCategory(ev.categoryId);
+      if (!cat?.recreational) return;
+      const dur = eventDurationDays(ev);
+      if (dur < 3) return;
+      const e = ev.dateEnd ? parseYmd(ev.dateEnd) : parseYmd(ev.dateStart);
+      if (e <= today && e > lastRecoveryEnd) lastRecoveryEnd = e;
+    });
+    streak = Math.max(0, Math.round((today - lastRecoveryEnd) / 86400000));
+    
+    const currentLoad = heatmap.load[todayIdx] || 0;
+    const F  = getFatigueThreshold();
+    const BT = getBurnoutThreshold();
+    document.getElementById('currentLoad').textContent = currentLoad.toFixed(1);
+    
+    // Подпись зоны + tooltip с прогнозом
+    function daysUntilThreshold(threshold) {
+      if (currentLoad >= threshold) return 0;
+      let sim = currentLoad;
+      const today2 = new Date();
+      for (let i = 1; i <= 365; i++) {
+        const d = new Date(today2); d.setDate(today2.getDate() + i);
+        const dow = d.getDay();
+        if (dow !== 0 && dow !== 6) sim += 1.0;
+        if (sim >= threshold) return i;
+      }
+      return 365;
+    }
+    
+    let zoneName, tooltipText;
+    if (currentLoad < F) {
+      zoneName = 'Ресурс';
+      tooltipText = `До Усталости ~${daysUntilThreshold(F)} дн.`;
+    } else if (currentLoad < BT) {
+      zoneName = 'Усталость';
+      tooltipText = `До Выгорания ~${daysUntilThreshold(BT)} дн.`;
+    } else {
+      zoneName = 'Выгорание';
+      tooltipText = 'Нужен длительный отдых';
+    }
+    document.getElementById('loadZone').textContent = zoneName;
+    document.getElementById('loadCard').setAttribute('data-tooltip', tooltipText);
+    
+    // Цвет dot
+    let dotColor;
+    if (currentLoad < F)        dotColor = '#7AB08F';  // Ресурс
+    else if (currentLoad < BT)  dotColor = '#E89F6B';  // Усталость
+    else                        dotColor = '#D44A4A';  // Выгорание
+    document.getElementById('heatDot').style.background = dotColor;
+  } else {
+    document.getElementById('currentLoad').textContent = '—';
+    document.getElementById('loadZone').textContent = 'другой год';
+    document.getElementById('heatDot').style.background = 'var(--muted-2)';
+  }
+  
+  const streakWord = streak === 1 ? 'день' : (streak >= 2 && streak <= 4) ? 'дня' : 'дней';
+  document.getElementById('streakDays').textContent = `${streak} ${streakWord}`;
+  document.getElementById('streakHint').textContent = streak > 60 ? 'критично' : streak > 30 ? 'пора отдохнуть' : streak > 14 ? 'копится' : '';
+  
+  // Travel days
+  const travelEvents = getEventsForYear(year).filter(e => e.categoryId === 'cat-travel');
+  let travelDays = 0;
+  travelEvents.forEach(ev => { travelDays += eventDurationDays(ev); });
+  document.getElementById('travelDays').textContent = travelDays;
+  document.getElementById('travelPct').textContent = `${Math.round(travelDays / 365 * 100)} % года`;
+  
+  // Следующий отдых — рекреационная категория, >= 3 дней
+  const allEvents = getEventsForYear(year);
+  const upcoming = allEvents.filter(e => {
+    const cat = getCategory(e.categoryId);
+    if (!cat?.recreational) return false;
+    if (e.autoPlanned) return false;
+    const s = parseYmd(e.dateStart);
+    if (!s || s < today) return false;
+    const dur = eventDurationDays(e);
+    return dur >= 3;
+  }).sort((a,b) => parseYmd(a.dateStart) - parseYmd(b.dateStart));
+  if (upcoming.length > 0) {
+    const next = upcoming[0];
+    document.getElementById('nextEvent').textContent = next.title;
+    const s = parseYmd(next.dateStart);
+    const daysUntil = Math.round((s - today) / 86400000);
+    document.getElementById('nextEventDate').textContent = `${s.getDate()}.${String(s.getMonth()+1).padStart(2,'0')} • через ${daysUntil} дн`;
+  } else {
+    document.getElementById('nextEvent').textContent = '—';
+    document.getElementById('nextEventDate').textContent = 'нет запланированного';
+  }
+}
+
+// ==================== EVENT MODAL ====================
+function openEventModal(eventId, prefillDate) {
+  editingEventId = eventId;
+  renderCatPick();
+  
+  if (eventId) {
+    const ev = state.events.find(e => e.id === eventId);
+    if (!ev) return;
+    document.getElementById('modalTitle').textContent = 'Редактировать событие';
+    document.getElementById('evTitle').value = ev.title;
+    document.getElementById('evDateStart').value = ev.dateStart;
+    document.getElementById('evDateEnd').value = ev.dateEnd || '';
+    document.getElementById('evRecurring').checked = ev.recurring || false;
+    document.getElementById('evRecreational').checked = isRecreational(ev);
+    const isOverride = ev.recreational !== undefined;
+    const lbl = document.getElementById('evRecreationalLabel');
+    if (lbl) lbl.textContent = isOverride
+      ? 'Рекреационное (исключение — переопределяет категорию)'
+      : 'Рекреационное (наследует от категории)';
+    document.getElementById('evNote').value = ev.note || '';
+    selectedCatId = ev.categoryId;
+    document.getElementById('evDelete').classList.remove('hidden');
+  } else {
+    document.getElementById('modalTitle').textContent = 'Новое событие';
+    document.getElementById('evTitle').value = '';
+    const startVal = prefillDate || ymd(new Date());
+    document.getElementById('evDateStart').value = startVal;
+    document.getElementById('evDateEnd').value = startVal;   // по умолчанию равны
+    document.getElementById('evRecurring').checked = false;
+    selectedCatId = state.categories[0]?.id || 'cat-travel';
+    document.getElementById('evRecreational').checked = defaultRecreational(selectedCatId);
+    const lbl2 = document.getElementById('evRecreationalLabel');
+    if (lbl2) lbl2.textContent = 'Рекреационное (наследует от категории)';
+    document.getElementById('evNote').value = '';
+    document.getElementById('evDelete').classList.add('hidden');
+  }
+  renderCatPick();
+  document.getElementById('eventOverlay').classList.add('show');
+  
+  // При изменении даты начала: если dateEnd пустая или меньше — подтягиваем
+  const startInput = document.getElementById('evDateStart');
+  const endInput = document.getElementById('evDateEnd');
+  startInput.oninput = () => {
+    if (!endInput.value || endInput.value < startInput.value) {
+      endInput.value = startInput.value;
+    }
+  };
+}
+
+function closeEventModal() {
+  document.getElementById('eventOverlay').classList.remove('show');
+  editingEventId = null;
+}
+
+function renderCatPick() {
+  const pick = document.getElementById('catPick');
+  pick.innerHTML = '';
+  state.categories.forEach(cat => {
+    const btn = elt('button', 'cat-pick-btn', cat.name);
+    btn.style.background = cat.color;
+    btn.style.color = cat.textColor;
+    if (cat.id === selectedCatId) btn.classList.add('active');
+    btn.onclick = () => { 
+      const prevDefault = defaultRecreational(selectedCatId);
+      selectedCatId = cat.id;
+      const newDefault = defaultRecreational(selectedCatId);
+      const checkbox = document.getElementById('evRecreational');
+      if (checkbox.checked === prevDefault) {
+        checkbox.checked = newDefault;
+        const lbl = document.getElementById('evRecreationalLabel');
+        if (lbl) lbl.textContent = 'Рекреационное (наследует от категории)';
+      }
+      renderCatPick(); 
+    };
+    pick.appendChild(btn);
+  });
+}
+
+function saveEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const dateStart = document.getElementById('evDateStart').value;
+  let dateEnd = document.getElementById('evDateEnd').value;
+  const recurring = document.getElementById('evRecurring').checked;
+  const recreational = document.getElementById('evRecreational').checked;
+  // Если галка совпадает с дефолтом категории — хранить undefined (наследует).
+  // Если отличается — хранить явно (исключение из правила категории).
+  const catDefault = defaultRecreational(selectedCatId);
+  const recreationalToSave = (recreational === catDefault) ? undefined : recreational;
+  const note = document.getElementById('evNote').value;
+  
+  if (!title || !dateStart) {
+    alert('Название и дата начала обязательны');
+    return;
+  }
+  
+  if (dateEnd && dateEnd < dateStart) {
+    alert('Дата конца раньше начала');
+    return;
+  }
+  if (dateEnd === dateStart) dateEnd = null;
+  
+  if (editingEventId) {
+    const idx = state.events.findIndex(e => e.id === editingEventId);
+    if (idx >= 0) {
+      const upd = { ...state.events[idx], title, categoryId: selectedCatId, dateStart, dateEnd: dateEnd || null, recurring, note };
+      if (recreationalToSave === undefined) delete upd.recreational;
+      else upd.recreational = recreationalToSave;
+      delete upd.noRecover;
+      state.events[idx] = upd;
+    }
+  } else {
+    const newEv = {
+      id: 'ev-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      title, categoryId: selectedCatId, dateStart, dateEnd: dateEnd || null, recurring, note
+    };
+    if (recreationalToSave !== undefined) newEv.recreational = recreationalToSave;
+    state.events.push(newEv);
+  }
+  
+  save();
+  closeEventModal();
+  rerender();
+}
+
+function deleteEvent() {
+  if (!editingEventId) return;
+  state.events = state.events.filter(e => e.id !== editingEventId);
+  save();
+  closeEventModal();
+  rerender();
+}
+
+// ==================== DRAG & DROP ====================
+let dragState = null;
+
+function initDragDrop() {
+  document.addEventListener('mousedown', onDragStart, true);
+  document.addEventListener('mousemove', onDragMove, true);
+  document.addEventListener('mouseup',   onDragEnd,   true);
+}
+
+function onDragStart(e) {
+  const handle = e.target.closest('.resize-handle');
+  if (handle) {
+    e.preventDefault(); e.stopPropagation();
+    const evId = handle.getAttribute('data-event-id');
+    const ev = state.events.find(x => x.id === evId);
+    if (!ev || ev.autoPlanned) return;
+    dragState = { type: handle.getAttribute('data-resize'), evId, origEv: JSON.parse(JSON.stringify(ev)), startY: e.clientY };
+    handle.closest('.event-bar').classList.add('dragging');
+    return;
+  }
+  // Тащим любой бар: multi-day или point
+  const bar = e.target.closest('.event-bar');
+  if (!bar || e.target.closest('.resize-handle')) return;
+  const evId = bar.getAttribute('data-event-id');
+  if (!evId) return;
+  const ev = state.events.find(x => x.id === evId);
+  if (!ev || ev.autoPlanned) return;
+  e.preventDefault();
+  dragState = { type: 'move', evId, origEv: JSON.parse(JSON.stringify(ev)), startY: e.clientY, moved: false };
+  bar.classList.add('dragging');
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  const CELL_H = 22;
+  const dayDelta = Math.round((e.clientY - dragState.startY) / CELL_H);
+  if (dragState.lastDelta === dayDelta) return;
+  dragState.lastDelta = dayDelta;
+  
+  const ev = state.events.find(x => x.id === dragState.evId);
+  if (!ev) return;
+  const orig = dragState.origEv;
+
+  if (dragState.type === 'move') {
+    const origS = parseYmd(orig.dateStart);
+    const origE = orig.dateEnd ? parseYmd(orig.dateEnd) : origS;
+    const dur = Math.round((origE - origS) / 86400000);
+    const newS = new Date(origS); newS.setDate(origS.getDate() + dayDelta);
+    const newE = new Date(newS); newE.setDate(newS.getDate() + dur);
+    ev.dateStart = ymd(newS);
+    ev.dateEnd   = dur > 0 ? ymd(newE) : null;
+  } else if (dragState.type === 'start') {
+    const origS = parseYmd(orig.dateStart);
+    const origE = orig.dateEnd ? parseYmd(orig.dateEnd) : origS;
+    const newS  = new Date(origS); newS.setDate(origS.getDate() + dayDelta);
+    if (newS <= origE) ev.dateStart = ymd(newS);
+  } else if (dragState.type === 'end') {
+    const origE  = orig.dateEnd ? parseYmd(orig.dateEnd) : parseYmd(orig.dateStart);
+    const origS  = parseYmd(orig.dateStart);
+    const newE   = new Date(origE); newE.setDate(origE.getDate() + dayDelta);
+    if (newE >= origS) ev.dateEnd = ymd(newE);
+  }
+  rerender();
+}
+
+function onDragEnd() {
+  if (!dragState) return;
+  save();
+  dragState = null;
+  document.querySelectorAll('.event-bar.dragging').forEach(b => b.classList.remove('dragging'));
+}
+
+// ==================== SPORT BLOCK MODAL ====================
+let editingSportBlockId = null;
+
+function openSportBlockModal(id) {
+  const sb = state.sportBlocks.find(b => b.id === id);
+  if (!sb) return;
+  editingSportBlockId = id;
+  document.getElementById('sbTitle').value = sb.name;
+  document.getElementById('sbDateStart').value = sb.dateStart;
+  document.getElementById('sbDateEnd').value = sb.dateEnd;
+  document.getElementById('sbColor').value = sb.color || '#888888';
+  document.getElementById('sbNote').value = sb.note || '';
+  document.getElementById('sportOverlay').classList.add('show');
+}
+
+function closeSportBlockModal() {
+  document.getElementById('sportOverlay').classList.remove('show');
+  editingSportBlockId = null;
+}
+
+function saveSportBlock() {
+  if (!editingSportBlockId) return;
+  const sb = state.sportBlocks.find(b => b.id === editingSportBlockId);
+  if (!sb) return;
+  sb.name = document.getElementById('sbTitle').value.trim() || sb.name;
+  sb.dateStart = document.getElementById('sbDateStart').value;
+  sb.dateEnd = document.getElementById('sbDateEnd').value;
+  sb.color = document.getElementById('sbColor').value;
+  sb.note = document.getElementById('sbNote').value.trim();
+  save();
+  closeSportBlockModal();
+  rerender();
+}
+
+function deleteSportBlock() {
+  if (!editingSportBlockId) return;
+  
+  state.sportBlocks = state.sportBlocks.filter(b => b.id !== editingSportBlockId);
+  save();
+  closeSportBlockModal();
+  rerender();
+}
+
+// ==================== SETTINGS ====================
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) renderSettings();
+}
+
+function renderSettings() {
+  // Categories
+  const catList = document.getElementById('catList');
+  catList.innerHTML = '';
+  state.categories.forEach((cat, idx) => {
+    const row = elt('div', 'cat-row', '');
+    
+    const colorBox = elt('input', 'cat-color-picker', '');
+    colorBox.type = 'color';
+    colorBox.value = cat.color;
+    colorBox.style.background = cat.color;
+    colorBox.oninput = (e) => { 
+      cat.color = e.target.value; 
+      // Auto-derive text color (darker version)
+      cat.textColor = darkenColor(cat.color);
+      save(); 
+      rerender(); 
+    };
+    row.appendChild(colorBox);
+    
+    const name = elt('input', 'cat-name', '');
+    name.value = cat.name;
+    name.onchange = (e) => { cat.name = e.target.value; save(); rerender(); };
+    row.appendChild(name);
+    
+    const recWrap = elt('label', 'cat-rec', '');
+    recWrap.style.display = 'flex';
+    recWrap.style.alignItems = 'center';
+    recWrap.style.gap = '4px';
+    recWrap.style.fontSize = '11px';
+    recWrap.style.color = 'var(--muted)';
+    recWrap.style.cursor = 'pointer';
+    recWrap.style.whiteSpace = 'nowrap';
+    const recCheck = elt('input', '', '');
+    recCheck.type = 'checkbox';
+    recCheck.checked = cat.recreational === true;
+    recCheck.title = 'Рекреационное: разгружает (запускает кривую отдыха)';
+    recCheck.onchange = (e) => { cat.recreational = e.target.checked; save(); rerender(); };
+    recWrap.appendChild(recCheck);
+    recWrap.appendChild(document.createTextNode('отдых'));
+    row.appendChild(recWrap);
+    
+    const del = elt('button', 'cat-del', '×');
+    del.onclick = () => { 
+      if (state.categories.length <= 1) { alert('Нельзя удалить последнюю категорию'); return; }
+      if (confirm(`Удалить категорию "${cat.name}"? События с ней останутся, но без категории.`)) {
+        state.categories.splice(idx, 1);
+        save(); renderSettings(); rerender();
+      }
+    };
+    row.appendChild(del);
+    
+    catList.appendChild(row);
+  });
+  
+  const wp  = state.settings.weeks_productive      || 8;
+  const dfr = state.settings.days_to_full_recovery || 14;
+  const wpInput  = document.getElementById('paramWeeksProductive');
+  const dfrInput = document.getElementById('paramDaysRecovery');
+  if (wpInput)  wpInput.value  = wp;
+  if (dfrInput) dfrInput.value = dfr;
+  const wpVal  = document.getElementById('paramWeeksProductiveVal');
+  const dfrVal = document.getElementById('paramDaysRecoveryVal');
+  if (wpVal)  wpVal.textContent  = wp;
+  if (dfrVal) dfrVal.textContent = dfr;
+
+  const hillChk = document.getElementById('toggleHill');
+  if (hillChk) hillChk.checked = !!state.settings.useHillSaturation;
+}
+
+function darkenColor(hex) {
+  hex = hex.replace('#','');
+  const r = Math.max(0, parseInt(hex.substring(0,2), 16) - 100);
+  const g = Math.max(0, parseInt(hex.substring(2,4), 16) - 100);
+  const b = Math.max(0, parseInt(hex.substring(4,6), 16) - 100);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+function isLightColor(color) {
+  // Accept hex or rgb/rgba
+  let r, g, b;
+  if (color.startsWith('#')) {
+    const hex = color.replace('#','');
+    if (hex.length === 3) {
+      r = parseInt(hex[0]+hex[0], 16);
+      g = parseInt(hex[1]+hex[1], 16);
+      b = parseInt(hex[2]+hex[2], 16);
+    } else {
+      r = parseInt(hex.substring(0,2), 16);
+      g = parseInt(hex.substring(2,4), 16);
+      b = parseInt(hex.substring(4,6), 16);
+    }
+  } else if (color.startsWith('rgb')) {
+    const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return false;
+    r = +m[1]; g = +m[2]; b = +m[3];
+  } else {
+    return false;
+  }
+  // Relative luminance
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6;
+}
+
+function addCategory() {
+  const id = 'cat-' + Date.now();
+  state.categories.push({
+    id, name: 'Новая', color: '#D8D8D8', textColor: '#444', intensity: 0
+  });
+  save();
+  renderSettings();
+  rerender();
+}
+
+function renderSportBlockList() {
+  const list = document.getElementById('sportBlockList');
+  list.innerHTML = '';
+  state.sportBlocks.forEach((sb, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'border: 0.5px solid var(--border-light); border-radius: 6px; padding: 8px; margin-bottom: 8px; background: var(--bg);';
+    
+    // Row 1: color + name + delete
+    const row1 = document.createElement('div');
+    row1.style.cssText = 'display: flex; gap: 6px; align-items: center; margin-bottom: 6px;';
+    
+    const colorBox = document.createElement('input');
+    colorBox.type = 'color';
+    colorBox.value = sb.color || PHASE_COLORS[sb.phase] || '#888888';
+    colorBox.style.cssText = 'width: 24px; height: 24px; padding: 0; border: 1px solid var(--border); border-radius: 50%; cursor: pointer; flex-shrink: 0;';
+    colorBox.oninput = (e) => { sb.color = e.target.value; save(); rerender(); };
+    row1.appendChild(colorBox);
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = sb.name;
+    nameInput.style.cssText = 'flex: 1; background: transparent; border: 0.5px solid var(--border); padding: 4px 8px; font-size: 12px; border-radius: 4px;';
+    nameInput.onchange = (e) => { sb.name = e.target.value; save(); rerender(); };
+    row1.appendChild(nameInput);
+    
+    const del = elt('button', 'cat-del', '×');
+    del.onclick = () => {
+      if (confirm(`Удалить блок "${sb.name}"?`)) {
+        state.sportBlocks.splice(idx, 1);
+        save(); renderSettings(); rerender();
+      }
+    };
+    row1.appendChild(del);
+    wrapper.appendChild(row1);
+    
+    // Row 2: dates
+    const row2 = document.createElement('div');
+    row2.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;';
+    
+    const dateS = document.createElement('input');
+    dateS.type = 'date';
+    dateS.value = sb.dateStart;
+    dateS.style.cssText = 'font-size: 11px; padding: 4px 6px;';
+    dateS.onchange = (e) => { sb.dateStart = e.target.value; save(); rerender(); };
+    
+    const dateE = document.createElement('input');
+    dateE.type = 'date';
+    dateE.value = sb.dateEnd;
+    dateE.style.cssText = 'font-size: 11px; padding: 4px 6px;';
+    dateE.onchange = (e) => { sb.dateEnd = e.target.value; save(); rerender(); };
+    
+    row2.appendChild(dateS);
+    row2.appendChild(dateE);
+    wrapper.appendChild(row2);
+    
+    // Row 3: intensity + phase
+    const row3 = document.createElement('div');
+    row3.style.cssText = 'display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--muted);';
+    
+    row3.appendChild(document.createTextNode('Intensity:'));
+    const intensity = document.createElement('input');
+    intensity.type = 'number';
+    intensity.value = sb.intensity || 0;
+    intensity.step = '1';
+    intensity.style.cssText = 'width: 60px; padding: 3px 6px; font-size: 11px;';
+    intensity.title = 'Положительное = разгружает, отрицательное = нагружает. 0 = нейтрально.';
+    intensity.onchange = (e) => { sb.intensity = parseFloat(e.target.value) || 0; save(); rerender(); };
+    row3.appendChild(intensity);
+    
+    row3.appendChild(document.createTextNode('Фаза:'));
+    const select = document.createElement('select');
+    select.style.cssText = 'font-size: 11px; padding: 3px 6px;';
+    ['prep','base','build','peak','race','transition'].forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      if (p === sb.phase) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.onchange = (e) => { sb.phase = e.target.value; save(); rerender(); };
+    row3.appendChild(select);
+    
+    wrapper.appendChild(row3);
+    
+    // Row 4: note
+    const noteInput = document.createElement('textarea');
+    noteInput.value = sb.note || '';
+    noteInput.placeholder = 'Заметка (фокус блока, питание, и т.п.)';
+    noteInput.rows = 1;
+    noteInput.style.cssText = 'width: 100%; margin-top: 6px; font-size: 11px; padding: 4px 6px; resize: vertical;';
+    noteInput.onchange = (e) => { sb.note = e.target.value; save(); };
+    wrapper.appendChild(noteInput);
+    
+    list.appendChild(wrapper);
+  });
+}
+
+function addSportBlock() {
+  const year = state.settings.currentYear;
+  state.sportBlocks.push({
+    id: 'sb-' + Date.now(),
+    name: 'Новый сезон', phase: 'base', color: '#A0AEC0',
+    dateStart: `${year}-01-01`, dateEnd: `${year}-01-31`, intensity: 0, note: ''
+  });
+  save();
+  renderSettings();
+  rerender();
+}
+
+function resetSportToDefault() {
+  
+  state.sportBlocks = defaultSportBlocks(state.settings.currentYear);
+  save();
+  renderSettings();
+  rerender();
+}
+
+// Param change handlers
+function bindParamHandlers() {
+  const wpInput  = document.getElementById('paramWeeksProductive');
+  const dfrInput = document.getElementById('paramDaysRecovery');
+  const wpVal    = document.getElementById('paramWeeksProductiveVal');
+  const dfrVal   = document.getElementById('paramDaysRecoveryVal');
+  if (wpInput) {
+    wpInput.oninput = (e) => {
+      state.settings.weeks_productive = parseInt(e.target.value);
+      if (wpVal) wpVal.textContent = e.target.value;
+      save(); rerender();
+    };
+  }
+  if (dfrInput) {
+    dfrInput.oninput = (e) => {
+      state.settings.days_to_full_recovery = parseInt(e.target.value);
+      if (dfrVal) dfrVal.textContent = e.target.value;
+      save(); rerender();
+    };
+  }
+}
+
+function openMethodologyModal() {
+  // Обновляем динамические числа из текущих настроек
+  const F  = getFatigueThreshold();
+  const BT = getBurnoutThreshold();
+  const WP = state.settings.weeks_productive || 8;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('mth-fatigue',  F);
+  set('mth-fatigue2', F);
+  set('mth-burnout',  BT);
+  set('mth-burnout2', BT);
+  set('mth-wp',   WP);
+  set('mth-wp2',  WP);
+  set('mth-f3',   F);
+  set('mth-f4',   F);
+  set('mth-bt2',  BT);
+  document.getElementById('methodOverlay').classList.add('show');
+}
+function closeMethodologyModal() {
+  document.getElementById('methodOverlay').classList.remove('show');
+}
+
+// ==================== EXPORT / IMPORT ====================
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `freedom-planner-${state.settings.currentYear}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  document.getElementById('importFile').click();
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.events && data.categories) {
+        state = { ...state, ...data };
+        save();
+        renderSettings();
+        rerender();
+        alert('Импортировано');
+      } else {
+        alert('Файл не похож на корректный экспорт');
+      }
+    } catch(err) {
+      alert('Ошибка чтения: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetAll() {
+  if (!confirm('Удалить все события, сбросить категории и спортивный план?')) return;
+  state = {
+    events: [],
+    categories: [...DEFAULT_CATEGORIES],
+    sportBlocks: defaultSportBlocks(state.settings.currentYear),
+    settings: { ...DEFAULT_SETTINGS, currentYear: state.settings.currentYear }
+  };
+  save();
+  renderSettings();
+  rerender();
+}
+
+// ==================== VIEW SWITCH ====================
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  rerender();
+}
+
+function changeYear(delta) {
+  state.settings.currentYear += delta;
+  document.getElementById('yearDisplay').textContent = state.settings.currentYear;
+  // Re-generate sport blocks for new year if blocks were defaults
+  save();
+  rerender();
+}
+
+// ==================== UTIL: create element ====================
+function elt(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined && text !== '') el.textContent = text;
+  return el;
+}
+
+// ==================== QUICK TOGGLES ====================
+function toggleQuick(which) {
+  if (which === 'heat') {
+    state.settings.showHeatmap = !state.settings.showHeatmap;
+  } else if (which === 'sport') {
+    state.settings.showSport = !state.settings.showSport;
+  } else if (which === 'holidays') {
+    state.settings.showHolidays = !state.settings.showHolidays;
+  }
+  save();
+  rerender();
+}
+
+function refreshToggleStates() {
+  // кнопки тоггла перенесены в легенду — функция оставлена для совместимости вызовов
+}
+
+// ==================== MAIN RENDER ====================
+// ==================== ПЛАНОВЫЕ ОТПУСКА ====================
+function recomputePlannedVacations() {
+  // Удаляем все автоплановые события (функция прогноза отключена)
+  state.events = state.events.filter(e => !e.autoPlanned);
+}
+
+function toggleHill(val) {
+  state.settings.useHillSaturation = val;
+  save(); rerender();
+}
+
+function toggleHeatmap() {
+  state.settings.showHeatmap = !state.settings.showHeatmap;
+  save(); rerender();
+}
+
+
+
+function rerender() {
+  document.getElementById('yearDisplay').textContent = state.settings.currentYear;
+  // Кнопки-тогглы в шапке
+  const btnH = document.getElementById('btnHeatmap');
+  if (btnH) btnH.classList.toggle('active', !!state.settings.showHeatmap);
+  recomputePlannedVacations();
+  if (currentView === 'year') renderYearGrid();
+  else if (currentView === 'timeline') renderTimeline();
+  else if (currentView === 'list') renderList();
+  renderLegend();
+  renderStatus();
+  refreshToggleStates();
+}
+
+// ==================== INIT ====================
+load();
+bindParamHandlers();
+rerender();
+renderSyncSettings();
+syncInit();
+initDragDrop();
+
+// Click outside modal closes it
+document.getElementById('eventOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'eventOverlay') closeEventModal();
+});
+document.getElementById('methodOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'methodOverlay') closeMethodologyModal();
+});
+</script>
+</body>
+</html>
