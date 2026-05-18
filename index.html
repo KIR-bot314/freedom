@@ -2033,9 +2033,236 @@ function save() {
     state._savedAt = new Date().toISOString();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     syncWriteDebounced();
+    cloudWriteDebounced();
   } catch(e) {
     console.error('Save failed', e);
   }
+}
+
+// ==================== ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ (Firebase) ====================
+// Кроссплатформенный sync через Firestore. Без логина: данные привязаны к
+// случайному "коду синхронизации" (= id документа в коллекции planners).
+// localStorage остаётся офлайн-кэшем, облако — источник правды между устройствами.
+// Сам Firebase SDK подключён отдельным module-скриптом, он отдаёт window.FB.
+
+const CLOUD_KEY_LS     = 'freedom-planner-cloud-key';
+const CLOUD_BACKUPS_LS = 'freedom-planner-cloud-backups';
+const CLOUD_MAX_BACKUPS = 14;
+const CLOUD_SIZE_LIMIT  = 900000; // запас под лимит документа Firestore (1 МиБ)
+
+let cloudKey = localStorage.getItem(CLOUD_KEY_LS) || null;
+let cloudStatus = 'off';   // off | connecting | connected | error
+let cloudDebounce = null;
+let cloudApplying = false; // защита от эха: применяем удалённые данные — не пушим обратно
+
+function genCloudKey() {
+  const a = new Uint8Array(15);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function loadCloudBackups() {
+  try { return JSON.parse(localStorage.getItem(CLOUD_BACKUPS_LS)) || []; }
+  catch(e) { return []; }
+}
+function saveCloudBackups(arr) {
+  try { localStorage.setItem(CLOUD_BACKUPS_LS, JSON.stringify(arr)); } catch(e) {}
+}
+
+// Собирает документ для облака: текущее состояние + ежедневные снимки-бэкапы
+function buildCloudPayload() {
+  const today = new Date().toISOString().slice(0, 10);
+  let backups = loadCloudBackups();
+  const snap = { date: today, state: JSON.parse(JSON.stringify(state)) };
+  if (backups.length && backups[backups.length - 1].date === today) {
+    backups[backups.length - 1] = snap;
+  } else {
+    backups.push(snap);
+  }
+  while (backups.length > CLOUD_MAX_BACKUPS) backups.shift();
+  saveCloudBackups(backups);
+
+  const savedAt = state._savedAt || new Date().toISOString();
+  let payload = { version: 1, savedAt, current: state, backups };
+  let blob = JSON.stringify(payload);
+  // Страховка по размеру: режем старые бэкапы, пока документ не влезет в лимит
+  while (blob.length > CLOUD_SIZE_LIMIT && payload.backups.length > 0) {
+    payload.backups.shift();
+    blob = JSON.stringify(payload);
+  }
+  return { blob, savedAt };
+}
+
+async function cloudPushNow() {
+  if (!cloudKey || !window.FB) return;
+  try {
+    const { blob, savedAt } = buildCloudPayload();
+    await window.FB.push(cloudKey, { blob, savedAt, updatedAt: Date.now() });
+    cloudStatus = 'connected';
+    updateCloudIndicator('saved');
+    setTimeout(() => { if (cloudStatus === 'connected') updateCloudIndicator('connected'); }, 1800);
+  } catch(e) {
+    console.error('Cloud push failed:', e);
+    setCloudStatus('error');
+  }
+}
+
+function cloudWriteDebounced() {
+  if (!cloudKey || cloudApplying) return;
+  if (cloudDebounce) clearTimeout(cloudDebounce);
+  cloudDebounce = setTimeout(cloudPushNow, 1500);
+}
+
+// Применяет документ из облака. Принимает, только если он новее локального.
+// Если локальные данные новее — наоборот, отправляет их в облако.
+function applyCloudDoc(data) {
+  if (!data) return;
+  const remoteTime = new Date(data.savedAt || 0).getTime();
+  const localTime  = new Date(state._savedAt || 0).getTime();
+  if (remoteTime <= localTime) {
+    if (localTime > remoteTime) cloudWriteDebounced();
+    return;
+  }
+  let payload;
+  try { payload = JSON.parse(data.blob); } catch(e) { return; }
+  if (!payload || !payload.current) return;
+  cloudApplying = true;
+  state = payload.current;
+  if (Array.isArray(payload.backups)) saveCloudBackups(payload.backups);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  rerender();
+  renderSettings();
+  cloudApplying = false;
+}
+
+function cloudConnect() {
+  if (!cloudKey || !window.FB) return;
+  setCloudStatus('connecting');
+  window.FB.subscribe(cloudKey,
+    (data) => { applyCloudDoc(data); if (cloudStatus !== 'connected') setCloudStatus('connected'); },
+    (err)  => { console.error('Cloud subscribe error:', err); setCloudStatus('error'); }
+  );
+}
+
+function cloudInit() {
+  if (window.FB && cloudKey) cloudConnect();
+}
+
+function setCloudStatus(status) {
+  cloudStatus = status;
+  updateCloudIndicator(status);
+  renderCloudSettings();
+}
+
+function updateCloudIndicator(status) {
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  const map = {
+    off:        { text: '',          color: 'transparent' },
+    connecting: { text: '☁ …',     color: '#888780' },
+    connected:  { text: '☁ синхр.', color: '#7AB08F' },
+    saved:      { text: '☁ сохр.',  color: '#7AB08F' },
+    error:      { text: '⚠ ошибка', color: '#D44A4A' }
+  };
+  const v = map[status] || map.off;
+  el.textContent = v.text;
+  el.style.color = v.color;
+}
+
+function renderCloudSettings() {
+  const block = document.getElementById('syncBlock');
+  if (!block) return;
+  const btn = (label, onclick, primary) =>
+    `<button onclick="${onclick}" style="background:${primary?'var(--text)':'transparent'};` +
+    `border:0.5px solid ${primary?'var(--text)':'var(--border)'};color:${primary?'var(--bg)':'var(--muted)'};` +
+    `padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;margin-right:6px;margin-top:8px;">${label}</button>`;
+
+  if (cloudKey && (cloudStatus === 'connected' || cloudStatus === 'connecting')) {
+    block.innerHTML =
+      `<div class="param-help" style="color:#7AB08F;margin-bottom:8px;">☁ Облачная синхронизация включена — изменения сохраняются автоматически на всех устройствах.</div>` +
+      `<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Код синхронизации:</div>` +
+      `<div style="display:flex;gap:6px;align-items:center;">` +
+        `<input id="cloudKeyField" readonly value="${cloudKey}" onclick="this.select()" style="flex:1;font-size:12px;font-family:ui-monospace,Menlo,monospace;padding:6px 8px;border:0.5px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);">` +
+        btn('Копировать', 'cloudCopyKey()') +
+      `</div>` +
+      `<div class="param-help" style="margin-top:8px;">Введи этот код на других устройствах (iPhone, iPad) — там откроется тот же планер. Код заменяет логин и пароль: не показывай его посторонним.</div>` +
+      btn('Отключить это устройство', 'cloudDisconnect()');
+  } else if (cloudStatus === 'error') {
+    block.innerHTML =
+      `<div class="param-help" style="color:#D44A4A;margin-bottom:8px;">⚠ Ошибка облачной синхронизации. Проверь интернет.</div>` +
+      btn('Повторить', 'cloudConnect()', true) +
+      btn('Отключить', 'cloudDisconnect()');
+  } else {
+    block.innerHTML =
+      `<div class="param-help" style="margin-bottom:8px;">Синхронизация между Mac, iPhone и iPad через облако. Без логина — только короткий код. Здесь же хранятся ежедневные бэкапы.</div>` +
+      btn('Включить синхронизацию', 'cloudCreateNew()', true) +
+      btn('У меня уже есть код', 'cloudPromptJoin()');
+  }
+}
+
+function cloudCopyKey() {
+  if (!cloudKey) return;
+  navigator.clipboard.writeText(cloudKey).then(
+    () => alert('Код скопирован'),
+    () => { const f = document.getElementById('cloudKeyField'); if (f) { f.select(); document.execCommand('copy'); } }
+  );
+}
+
+function cloudCreateNew() {
+  if (!window.FB) { alert('Облако ещё загружается, попробуй через пару секунд.'); return; }
+  cloudKey = genCloudKey();
+  localStorage.setItem(CLOUD_KEY_LS, cloudKey);
+  setCloudStatus('connecting');
+  cloudPushNow().then(() => cloudConnect());
+}
+
+function cloudPromptJoin() {
+  const k = (prompt('Вставь код синхронизации с другого устройства:') || '').trim().toLowerCase();
+  if (!k) return;
+  if (!/^[0-9a-f]{20,}$/.test(k)) { alert('Код не похож на правильный — должен быть длинной строкой из цифр и букв a-f.'); return; }
+  cloudJoin(k);
+}
+
+async function cloudJoin(k) {
+  if (!window.FB) { alert('Облако ещё загружается, попробуй через пару секунд.'); return; }
+  setCloudStatus('connecting');
+  try {
+    const data = await window.FB.pullOnce(k);
+    if (!data || !data.blob) {
+      alert('По этому коду данных нет. Проверь, что код скопирован полностью.');
+      setCloudStatus('off');
+      return;
+    }
+    if (!confirm('Данные на этом устройстве будут заменены данными из облака. Продолжить?')) {
+      setCloudStatus('off');
+      return;
+    }
+    cloudKey = k;
+    localStorage.setItem(CLOUD_KEY_LS, cloudKey);
+    let payload;
+    try { payload = JSON.parse(data.blob); } catch(e) { payload = null; }
+    if (payload && payload.current) {
+      cloudApplying = true;
+      state = payload.current;
+      if (Array.isArray(payload.backups)) saveCloudBackups(payload.backups);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+      rerender();
+      renderSettings();
+      cloudApplying = false;
+    }
+    cloudConnect();
+  } catch(e) {
+    console.error('Cloud join failed:', e);
+    alert('Не удалось подключиться. Проверь интернет.');
+    setCloudStatus('error');
+  }
+}
+
+function cloudDisconnect() {
+  if (window.FB) window.FB.unsubscribe();
+  cloudKey = null;
+  localStorage.removeItem(CLOUD_KEY_LS);
+  setCloudStatus('off');
 }
 
 // ==================== UTILS ====================
@@ -3767,9 +3994,10 @@ function rerender() {
 load();
 bindParamHandlers();
 rerender();
-renderSyncSettings();
-syncInit();
+renderCloudSettings();
 initDragDrop();
+if (window.FB) cloudInit();
+else window.addEventListener('fb-ready', cloudInit);
 
 // Click outside modal closes it
 document.getElementById('eventOverlay').addEventListener('click', (e) => {
@@ -3778,6 +4006,51 @@ document.getElementById('eventOverlay').addEventListener('click', (e) => {
 document.getElementById('methodOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'methodOverlay') closeMethodologyModal();
 });
+</script>
+
+<!-- ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ: Firebase SDK. Отдельный module-скрипт,
+     отдаёт основному скрипту window.FB. Конфиг публичный — так и задумано. -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA0pxfcKg1FjQ74B14uUDHUW1SPCTEb7uI",
+  authDomain: "freedom-planner-ee115.firebaseapp.com",
+  projectId: "freedom-planner-ee115",
+  storageBucket: "freedom-planner-ee115.firebasestorage.app",
+  messagingSenderId: "372110726826",
+  appId: "1:372110726826:web:4a1bf288f166222a43a2d3"
+};
+
+let db = null;
+try {
+  db = getFirestore(initializeApp(firebaseConfig));
+} catch (e) {
+  console.error('Firebase init failed:', e);
+}
+
+let unsub = null;
+
+window.FB = {
+  async push(key, payload) {
+    await setDoc(doc(db, 'planners', key), payload);
+  },
+  async pullOnce(key) {
+    const snap = await getDoc(doc(db, 'planners', key));
+    return snap.exists() ? snap.data() : null;
+  },
+  subscribe(key, onData, onErr) {
+    if (unsub) { unsub(); unsub = null; }
+    unsub = onSnapshot(doc(db, 'planners', key),
+      (snap) => { if (snap.exists()) onData(snap.data()); },
+      (err)  => { if (onErr) onErr(err); }
+    );
+  },
+  unsubscribe() { if (unsub) { unsub(); unsub = null; } }
+};
+
+window.dispatchEvent(new Event('fb-ready'));
 </script>
 </body>
 </html>
