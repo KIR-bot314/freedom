@@ -1032,6 +1032,40 @@ input[type="checkbox"] { accent-color: var(--text); }
 .mth .zone-bar { display: flex; height: 28px; border-radius: 7px; overflow: hidden; margin: 10px 0 6px; }
 .mth .zone-bar div { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; }
 
+/* === ПРЯМОЕ РЕДАКТИРОВАНИЕ: drag / resize / быстрый ввод === */
+.event-bar, .timeline-event { touch-action: none; }
+.timeline-event.dragging { opacity: 0.6 !important; }
+.resize-handle { height: 7px; }
+@media (pointer: coarse) {
+  .resize-handle { opacity: 0.4; height: 12px; background: rgba(0,0,0,0.10); }
+}
+.drag-hint {
+  position: fixed; z-index: 9999; pointer-events: none; display: none;
+  background: var(--text); color: var(--bg);
+  font-size: 11px; font-weight: 600; padding: 4px 8px;
+  border-radius: 6px; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+}
+.app-toast {
+  position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%);
+  z-index: 9999; background: var(--text); color: var(--bg);
+  font-size: 12px; padding: 8px 10px 8px 14px; border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+  display: flex; align-items: center; gap: 12px;
+  opacity: 0; transition: opacity 0.18s; pointer-events: none;
+}
+.app-toast.show { opacity: 1; pointer-events: auto; }
+.app-toast button {
+  background: none; border: 0.5px solid rgba(250,249,245,0.45);
+  color: var(--bg); font-size: 11px; font-weight: 600;
+  padding: 4px 9px; border-radius: 6px; cursor: pointer;
+}
+.quick-add-input {
+  position: absolute; left: 21px; right: 2px; z-index: 10;
+  border: 1px solid var(--accent); border-radius: 3px;
+  font-size: 10.5px; padding: 0 4px; font-family: inherit;
+  background: var(--bg); color: var(--text);
+}
 </style>
 </head>
 <body>
@@ -2609,7 +2643,7 @@ function renderYearGrid() {
       
       cell.setAttribute('data-tooltip', tipText);
       
-      cell.onclick = () => openEventModal(null, dateStr);
+      cell.onclick = () => quickAddInline(dateStr);
       col.appendChild(cell);
     }
     
@@ -2669,7 +2703,8 @@ function renderYearGrid() {
       // Прошлое — приглушаем
       if (e < todayDate) bar.style.opacity = ev.autoPlanned ? '0.35' : '0.55';
 
-      if (s >= monthStart) bar.textContent = ev.title;
+      // appendChild(textNode), а не textContent — иначе стёрлись бы ручки resize
+      if (s >= monthStart) bar.appendChild(document.createTextNode(ev.title));
 
       bar.setAttribute('data-tooltip', `${ev.title}\n${formatDateRU(ev.dateStart)}${ev.dateEnd ? ' — ' + formatDateRU(ev.dateEnd) : ''}${ev.note ? '\n\n' + ev.note : ''}`);
 
@@ -3467,77 +3502,245 @@ function deleteEvent() {
   rerender();
 }
 
-// ==================== DRAG & DROP ====================
+// ==================== DRAG & DROP / RESIZE (pointer-based) ====================
+// Единый pointer-механизм — работает на мыши, трекпаде и тач-экране.
+// Год: вертикаль = день, горизонталь = месяц; resize за края.
+// Таймлайн: горизонталь = день.
+// Короткий тап = открыть карточку (нативный click), протяжка = перетаскивание.
+
 let dragState = null;
+let pendingDrag = null;
+let undoStack = [];
+let lastDragEnd = 0;
+const DRAG_THRESHOLD = 6; // px — порог тап → перетаскивание
 
 function initDragDrop() {
-  document.addEventListener('mousedown', onDragStart, true);
-  document.addEventListener('mousemove', onDragMove, true);
-  document.addEventListener('mouseup',   onDragEnd,   true);
+  document.addEventListener('pointerdown', onPointerDown, true);
+  document.addEventListener('pointermove', onPointerMove, true);
+  document.addEventListener('pointerup',   onPointerUp,   true);
+  document.addEventListener('pointercancel', onPointerUp, true);
+  document.addEventListener('keydown', onUndoKey);
+  // Гасим клик, который браузер шлёт сразу после перетаскивания/resize
+  document.addEventListener('click', (e) => {
+    if (Date.now() - lastDragEnd < 350) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
 }
 
-function onDragStart(e) {
+function measureCellH() {
+  const c = document.querySelector('.day-cell:not(.empty)');
+  return c ? c.getBoundingClientRect().height : 22;
+}
+
+function onPointerDown(e) {
+  if (e.button !== undefined && e.button > 0) return;
+  // resize-handle (только вид Год)
   const handle = e.target.closest('.resize-handle');
   if (handle) {
-    e.preventDefault(); e.stopPropagation();
     const evId = handle.getAttribute('data-event-id');
     const ev = state.events.find(x => x.id === evId);
     if (!ev || ev.autoPlanned) return;
-    dragState = { type: handle.getAttribute('data-resize'), evId, origEv: JSON.parse(JSON.stringify(ev)), startY: e.clientY };
-    handle.closest('.event-bar').classList.add('dragging');
+    e.preventDefault();
+    dragState = {
+      mode: 'resize', side: handle.getAttribute('data-resize'),
+      evId, origEv: JSON.parse(JSON.stringify(ev)),
+      startX: e.clientX, startY: e.clientY,
+      preSnapshot: JSON.stringify(state), cellH: measureCellH(), moved: false
+    };
+    try { document.documentElement.setPointerCapture(e.pointerId); } catch(_) {}
     return;
   }
-  // Тащим любой бар: multi-day или point
-  const bar = e.target.closest('.event-bar');
-  if (!bar || e.target.closest('.resize-handle')) return;
+  // перетаскивание бара — запоминаем, двигать начнём после порога
+  const bar = e.target.closest('.event-bar, .timeline-event');
+  if (!bar) return;
   const evId = bar.getAttribute('data-event-id');
   if (!evId) return;
   const ev = state.events.find(x => x.id === evId);
   if (!ev || ev.autoPlanned) return;
-  e.preventDefault();
-  dragState = { type: 'move', evId, origEv: JSON.parse(JSON.stringify(ev)), startY: e.clientY, moved: false };
-  bar.classList.add('dragging');
+  const colEl = bar.closest('.month-col');
+  const trackEl = bar.closest('.timeline-track');
+  pendingDrag = {
+    mode: 'move', evId, origEv: JSON.parse(JSON.stringify(ev)),
+    startX: e.clientX, startY: e.clientY, pointerId: e.pointerId,
+    view: currentView, cellH: measureCellH(),
+    colW: colEl ? colEl.getBoundingClientRect().width : 0,
+    trackW: trackEl ? trackEl.getBoundingClientRect().width : 0
+  };
 }
 
-function onDragMove(e) {
+function onPointerMove(e) {
+  if (pendingDrag && !dragState) {
+    const dx = e.clientX - pendingDrag.startX;
+    const dy = e.clientY - pendingDrag.startY;
+    if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+    dragState = { ...pendingDrag, preSnapshot: JSON.stringify(state), moved: false };
+    pendingDrag = null;
+    try { document.documentElement.setPointerCapture(dragState.pointerId); } catch(_) {}
+  }
   if (!dragState) return;
   e.preventDefault();
-  const CELL_H = 22;
-  const dayDelta = Math.round((e.clientY - dragState.startY) / CELL_H);
-  if (dragState.lastDelta === dayDelta) return;
-  dragState.lastDelta = dayDelta;
-  
+  const dx = e.clientX - dragState.startX;
+  const dy = e.clientY - dragState.startY;
   const ev = state.events.find(x => x.id === dragState.evId);
   if (!ev) return;
   const orig = dragState.origEv;
+  const cellH = dragState.cellH || 22;
 
-  if (dragState.type === 'move') {
+  if (dragState.mode === 'resize') {
+    const dayDelta = Math.round(dy / cellH);
     const origS = parseYmd(orig.dateStart);
     const origE = orig.dateEnd ? parseYmd(orig.dateEnd) : origS;
-    const dur = Math.round((origE - origS) / 86400000);
-    const newS = new Date(origS); newS.setDate(origS.getDate() + dayDelta);
-    const newE = new Date(newS); newE.setDate(newS.getDate() + dur);
-    ev.dateStart = ymd(newS);
-    ev.dateEnd   = dur > 0 ? ymd(newE) : null;
-  } else if (dragState.type === 'start') {
-    const origS = parseYmd(orig.dateStart);
-    const origE = orig.dateEnd ? parseYmd(orig.dateEnd) : origS;
-    const newS  = new Date(origS); newS.setDate(origS.getDate() + dayDelta);
-    if (newS <= origE) ev.dateStart = ymd(newS);
-  } else if (dragState.type === 'end') {
-    const origE  = orig.dateEnd ? parseYmd(orig.dateEnd) : parseYmd(orig.dateStart);
-    const origS  = parseYmd(orig.dateStart);
-    const newE   = new Date(origE); newE.setDate(origE.getDate() + dayDelta);
-    if (newE >= origS) ev.dateEnd = ymd(newE);
+    if (dragState.side === 'start') {
+      const ns = new Date(origS); ns.setDate(origS.getDate() + dayDelta);
+      if (ns <= origE) ev.dateStart = ymd(ns);
+    } else {
+      const ne = new Date(origE); ne.setDate(origE.getDate() + dayDelta);
+      if (ne >= origS) ev.dateEnd = ymd(ne);
+    }
+  } else if (dragState.view === 'timeline') {
+    const range = tlGetRange();
+    const daysInView = Math.max(1, Math.round((range.viewEnd - range.viewStart) / 86400000) + 1);
+    const pxPerDay = Math.max((dragState.trackW || 1) / daysInView, 0.5);
+    applyMove(ev, orig, Math.round(dx / pxPerDay), 0);
+  } else {
+    const dayDelta = Math.round(dy / cellH);
+    const monthDelta = dragState.colW ? Math.round(dx / dragState.colW) : 0;
+    applyMove(ev, orig, dayDelta, monthDelta);
   }
+  dragState.moved = true;
   rerender();
+  const rebar = document.querySelector(`[data-event-id="${dragState.evId}"]`);
+  if (rebar) rebar.classList.add('dragging');
+  showDragHint(e.clientX, e.clientY, ev);
 }
 
-function onDragEnd() {
-  if (!dragState) return;
-  save();
-  dragState = null;
-  document.querySelectorAll('.event-bar.dragging').forEach(b => b.classList.remove('dragging'));
+function applyMove(ev, orig, dayDelta, monthDelta) {
+  const origS = parseYmd(orig.dateStart);
+  const origE = orig.dateEnd ? parseYmd(orig.dateEnd) : origS;
+  const dur = Math.round((origE - origS) / 86400000);
+  let ns = new Date(origS.getFullYear(), origS.getMonth() + monthDelta, origS.getDate() + dayDelta);
+  const y = state.settings.currentYear;
+  const minD = new Date(y, 0, 1), maxD = new Date(y, 11, 31);
+  if (ns < minD) ns = minD;
+  if (ns > maxD) ns = maxD;
+  const ne = new Date(ns); ne.setDate(ns.getDate() + dur);
+  ev.dateStart = ymd(ns);
+  ev.dateEnd = dur > 0 ? ymd(ne) : null;
+}
+
+function onPointerUp() {
+  if (dragState) {
+    if (dragState.moved) {
+      undoStack.push(dragState.preSnapshot);
+      if (undoStack.length > 20) undoStack.shift();
+      save();
+      showToast('Изменено', doUndo);
+    }
+    lastDragEnd = Date.now();
+    dragState = null;
+    hideDragHint();
+    document.querySelectorAll('.dragging').forEach(b => b.classList.remove('dragging'));
+  }
+  pendingDrag = null;
+}
+
+// ==================== ОТМЕНА / ПОДСКАЗКИ / БЫСТРЫЙ ВВОД ====================
+function doUndo() {
+  if (!undoStack.length) return;
+  try {
+    state = JSON.parse(undoStack.pop());
+    save();
+    rerender();
+    renderSettings();
+    hideToast();
+  } catch(e) { console.error('Undo failed', e); }
+}
+
+function onUndoKey(e) {
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+    doUndo();
+  }
+}
+
+let dragHintEl = null;
+function showDragHint(x, y, ev) {
+  if (!dragHintEl) {
+    dragHintEl = document.createElement('div');
+    dragHintEl.className = 'drag-hint';
+    document.body.appendChild(dragHintEl);
+  }
+  const s = parseYmd(ev.dateStart);
+  const e2 = ev.dateEnd ? parseYmd(ev.dateEnd) : s;
+  const fmt = (d) => `${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 3).toLowerCase()}`;
+  dragHintEl.textContent = ev.dateEnd ? `${fmt(s)} — ${fmt(e2)}` : fmt(s);
+  dragHintEl.style.display = 'block';
+  dragHintEl.style.left = Math.min(x + 14, window.innerWidth - 120) + 'px';
+  dragHintEl.style.top  = Math.max(8, y - 34) + 'px';
+}
+function hideDragHint() { if (dragHintEl) dragHintEl.style.display = 'none'; }
+
+let toastEl = null, toastTimer = null;
+function showToast(text, onUndo) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.className = 'app-toast';
+    document.body.appendChild(toastEl);
+  }
+  toastEl.innerHTML = '';
+  toastEl.appendChild(document.createTextNode(text));
+  if (onUndo) {
+    const b = document.createElement('button');
+    b.textContent = 'Отменить';
+    b.onclick = onUndo;
+    toastEl.appendChild(b);
+  }
+  toastEl.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 5000);
+}
+function hideToast() { if (toastEl) toastEl.classList.remove('show'); }
+
+// Быстрый ввод события прямо в клетке дня — без открытия полной формы
+function quickAddInline(dateStr) {
+  document.querySelectorAll('.quick-add-input').forEach(el => el.remove());
+  const cell = document.querySelector(`.day-cell[data-date="${dateStr}"]`);
+  if (!cell) return;
+  const monthCol = cell.parentElement;
+  const input = document.createElement('input');
+  input.className = 'quick-add-input';
+  input.type = 'text';
+  input.placeholder = 'Событие…';
+  input.style.top = cell.offsetTop + 'px';
+  input.style.height = cell.offsetHeight + 'px';
+  let done = false;
+  const finish = (commit) => {
+    if (done) return;
+    done = true;
+    const title = input.value.trim();
+    input.remove();
+    if (commit && title) {
+      undoStack.push(JSON.stringify(state));
+      if (undoStack.length > 20) undoStack.shift();
+      state.events.push({
+        id: 'ev-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        title,
+        categoryId: selectedCatId || (state.categories[0] && state.categories[0].id) || 'cat-other',
+        dateStart: dateStr, dateEnd: null, recurring: false, note: ''
+      });
+      save();
+      rerender();
+    }
+  };
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+  monthCol.appendChild(input);
+  input.focus();
 }
 
 // ==================== SPORT BLOCK MODAL ====================
